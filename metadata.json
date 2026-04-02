@@ -1,0 +1,8 @@
+{
+  "name": "EDU-LMS",
+  "description": "A localized, ISP-optimized Learning Management System with Zoom SDK integration.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

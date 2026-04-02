@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model enrollments {
+  id        String             @id
+  userId    String
+  moduleId  String
+  status    enrollments_status @default(PENDING)
+  paidAt    DateTime?
+  amount    Decimal            @db.Decimal(10, 2)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime
+  modules   modules            @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  users     users              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, moduleId])
+  @@index([moduleId], map: "enrollments_moduleId_fkey")
+}
+
+model live_classes {
+  id            String              @id
+  moduleId      String
+  title         String
+  scheduledAt   DateTime
+  duration      Int
+  status        live_classes_status @default(SCHEDULED)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime
+  zoomJoinUrl   String?             @db.Text
+  zoomMeetingId String?
+  zoomPassword  String?
+  zoomStartUrl  String?             @db.Text
+  modules       modules             @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  recordings    recordings[]
+
+  @@index([moduleId], map: "live_classes_moduleId_fkey")
+}
+
+model modules {
+  id           String         @id
+  name         String
+  description  String         @db.Text
+  price        Decimal        @db.Decimal(10, 2)
+  imageUrl     String?
+  color        String?        @default("#f3184c")
+  type         String         @default("COURSE") // COURSE or CLASS
+  startDate    DateTime
+  startTime    String
+  endTime      String
+  isActive     Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime
+  teacherId    String?
+  enrollments  enrollments[]
+  live_classes live_classes[]
+  users        users?         @relation(fields: [teacherId], references: [id])
+
+  @@index([teacherId], map: "modules_teacherId_fkey")
+}
+
+model otps {
+  id        String   @id
+  userId    String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  users     users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "otps_userId_fkey")
+}
+
+model recordings {
+  id               String       @id
+  liveClassId      String
+  title            String
+  duration         Int?
+  youtubeUrl       String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime
+  zoomRecordingUrl String?      @db.Text
+  live_classes     live_classes @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
+
+  @@index([liveClassId], map: "recordings_liveClassId_fkey")
+}
+
+model sessions {
+  id        String   @id
+  userId    String
+  token     String   @db.Text
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  users     users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "sessions_userId_fkey")
+}
+
+model users {
+  id          String        @id
+  email       String        @unique
+  username    String        @unique
+  password    String
+  role        users_role    @default(STUDENT)
+  isVerified  Boolean       @default(false)
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime
+  enrollments enrollments[]
+  modules     modules[]
+  otps        otps[]
+  sessions    sessions[]
+}
+
+enum enrollments_status {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+enum users_role {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+enum live_classes_status {
+  SCHEDULED
+  LIVE
+  COMPLETED
+  CANCELLED
+}
