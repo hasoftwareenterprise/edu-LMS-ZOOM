@@ -26,16 +26,16 @@ async function bootstrapUsers() {
 
   for (const user of testUsers) {
     try {
-      const existing = await prisma.users.findFirst({ 
-        where: { 
+      const existing = await prisma.users.findFirst({
+        where: {
           OR: [
             { email: user.email },
             { username: user.username }
           ]
-        } 
+        }
       });
       const hashedPassword = await bcrypt.hash(user.password, 10);
-      
+
       if (!existing) {
         const newUser = await prisma.users.create({
           data: {
@@ -49,7 +49,7 @@ async function bootstrapUsers() {
           },
         });
         console.log(`Bootstrapped user: ${user.email}`);
-  
+
         // Add sample data for teacher1
         if (user.username === "teacher1") {
           const courseId = uuidv4();
@@ -68,7 +68,7 @@ async function bootstrapUsers() {
               updatedAt: new Date()
             }
           });
-  
+
           await prisma.live_classes.create({
             data: {
               id: uuidv4(),
@@ -86,7 +86,7 @@ async function bootstrapUsers() {
         // Ensure password is correct even if user existed with old password
         await prisma.users.update({
           where: { id: existing.id },
-          data: { 
+          data: {
             password: hashedPassword,
             role: user.role // Ensure role is correct too
           }
@@ -127,10 +127,10 @@ app.get("/api/health", (req, res) => {
     "ZOOM_CLIENT_ID",
     "ZOOM_CLIENT_SECRET"
   ];
-  
+
   const status: Record<string, string> = {};
   let allPresent = true;
-  
+
   requiredVars.forEach(v => {
     const present = !!process.env[v];
     status[v] = present ? "PRESENT" : "MISSING";
@@ -151,7 +151,7 @@ app.post("/api/auth/signup", async (req, res) => {
   try {
     // Only allow STUDENT signup publicly, or TEACHER if specified (for testing)
     const signupRole = role === "TEACHER" ? users_role.TEACHER : users_role.STUDENT;
-    
+
     // Check if user exists
     const existing = await prisma.users.findFirst({
       where: { OR: [{ email }, { username }] }
@@ -199,9 +199,9 @@ app.post("/api/auth/signup", async (req, res) => {
 // Auth: Login
 app.post("/api/auth/login", async (req, res) => {
   const { email, password } = req.body;
-  
+
   try {
-    const user = await prisma.users.findUnique({ 
+    const user = await prisma.users.findUnique({
       where: { email },
       include: { sessions: true }
     });
@@ -212,7 +212,7 @@ app.post("/api/auth/login", async (req, res) => {
 
     // Direct comparison for bootstrapped users or bcrypt
     const isMatch = await bcrypt.compare(password, user.password).catch(() => false) || password === user.password;
-    
+
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
@@ -243,14 +243,14 @@ app.post("/api/auth/login", async (req, res) => {
     });
     console.log(`Session created in DB: ${createdSession.id}`);
 
-    res.json({ 
-      token, 
-      user: { 
+    res.json({
+      token,
+      user: {
         id: user.id,
-        email: user.email, 
+        email: user.email,
         username: user.username,
-        role: user.role 
-      } 
+        role: user.role
+      }
     });
   } catch (err) {
     console.error("Login error:", err);
@@ -262,12 +262,12 @@ app.post("/api/auth/login", async (req, res) => {
 const verifySession = async (req: any, res: any, next: any) => {
   const authHeader = req.headers.authorization;
   const token = authHeader?.split(" ")[1];
-  
+
   if (!token) return res.status(401).json({ message: "Unauthorized" });
 
   try {
     const decoded: any = jwt.verify(token, process.env.JWT_SECRET || "secret");
-    
+
     if (!decoded.sessionId) {
       console.error("Token missing sessionId");
       return res.status(401).json({ message: "Invalid token payload" });
@@ -284,9 +284,9 @@ const verifySession = async (req: any, res: any, next: any) => {
       // Log all sessions for this user to debug
       const allSessions = await prisma.sessions.findMany({ where: { userId: decoded.userId } });
       console.warn(`All sessions for user ${decoded.userId}:`, allSessions.map(s => s.id));
-      
-      return res.status(403).json({ 
-        code: "KICK_OUT", 
+
+      return res.status(403).json({
+        code: "KICK_OUT",
         message: "Session not found",
         debug: {
           sessionId: decoded.sessionId,
@@ -298,21 +298,21 @@ const verifySession = async (req: any, res: any, next: any) => {
 
     if (session.expiresAt < new Date()) {
       console.warn(`Session expired for ID: ${decoded.sessionId}. User: ${decoded.email}`);
-      return res.status(403).json({ 
-        code: "KICK_OUT", 
-        message: "Session expired" 
+      return res.status(403).json({
+        code: "KICK_OUT",
+        message: "Session expired"
       });
     }
 
     // Optional: Verify token matches (to prevent replay attacks with old tokens for same session)
     if (session.token !== token) {
       console.warn(`Token mismatch for session ID: ${decoded.sessionId}. User: ${decoded.email}`);
-      return res.status(403).json({ 
-        code: "KICK_OUT", 
-        message: "Session invalidated by a newer login" 
+      return res.status(403).json({
+        code: "KICK_OUT",
+        message: "Session invalidated by a newer login"
       });
     }
-    
+
     req.user = decoded;
     next();
   } catch (err) {
@@ -346,7 +346,7 @@ app.get("/api/dashboard", verifySession, async (req: any, res) => {
   try {
     const userId = req.user.userId;
     const role = req.user.role;
-    
+
     const user = await prisma.users.findUnique({
       where: { id: userId },
       include: {
@@ -526,7 +526,7 @@ app.post("/api/admin/clear-data", verifySession, async (req: any, res) => {
     await prisma.modules.deleteMany({});
     // Keep users but clear sessions
     await prisma.sessions.deleteMany({});
-    
+
     res.json({ message: "All data cleared successfully" });
   } catch (error) {
     console.error("Clear data error:", error);
@@ -674,14 +674,14 @@ app.delete("/api/live-classes/:id", verifySession, async (req: any, res) => {
 // Zoom: Generate Signature
 app.post("/api/zoom/signature", verifySession, (req, res) => {
   const { meetingNumber, role } = req.body;
-  
+
   if (!meetingNumber) {
     return res.status(400).json({ message: "Meeting number is required" });
   }
 
   // Clean meeting number (remove spaces)
   const cleanMeetingNumber = meetingNumber.toString().replace(/\s/g, '');
-  
+
   const iat = Math.round(new Date().getTime() / 1000) - 30;
   const exp = iat + 60 * 60 * 2;
 
@@ -705,9 +705,9 @@ app.post("/api/zoom/signature", verifySession, (req, res) => {
     process.env.ZOOM_SDK_SECRET || ""
   );
 
-  res.json({ 
+  res.json({
     signature,
-    sdkKey: process.env.ZOOM_SDK_KEY 
+    sdkKey: process.env.ZOOM_SDK_KEY
   });
 });
 
@@ -730,7 +730,7 @@ async function startServer() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
-    
+
     // Log environment variable status (without values)
     const requiredVars = [
       "DATABASE_URL",

@@ -196,118 +196,122 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ user, dashboardData
   };
 
   return (
-    <>
-      {/* Premium Dashboard Background */}
-      <div className="dashboard-bg">
-        <div className="dashboard-bg-shape top-[-10%] left-[-10%] size-[500px]" style={{ backgroundColor: 'var(--color-primary)', opacity: 0.1, filter: 'blur(120px)', borderRadius: '9999px' }} />
-        <div className="dashboard-bg-shape bottom-[-10%] right-[-10%] size-[400px]" style={{ backgroundColor: 'var(--color-accent)', opacity: 0.1, animationDelay: '2s', filter: 'blur(120px)', borderRadius: '9999px' }} />
-      </div>
-
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 grid grid-cols-12 gap-10 p-6 lg:p-14 w-full max-w-[1800px] mx-auto min-h-screen"
-      >
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="grid grid-cols-12 gap-8 bg-gradient-to-br from-background to-surface p-8 rounded-[48px] shadow-inner"
+    >
       {/* Left Column */}
       {(activeTab === 'dashboard' || activeTab === 'courses') && (
         <div className={cn("space-y-8", activeTab === 'courses' ? "col-span-12" : "col-span-12 lg:col-span-8")}>
           {/* Teacher Profile Card */}
           {activeTab === 'dashboard' && (
-            <div className="bento-card !rounded-[48px] p-12 relative overflow-hidden group shadow-[0_40px_80px_-20px_rgba(0,0,0,0.6)]">
-              <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-10 relative z-10">
-                <div className="flex items-center gap-12">
-                  <div className="relative">
-                    <div className="size-32 rounded-[32px] bg-gradient-to-tr from-primary to-accent p-1 shadow-2xl transition-all duration-700" style={{ borderRadius: '32px' }}>
-                      <div className="w-full h-full rounded-[28px] overflow-hidden bg-surface relative" style={{ borderRadius: '28px' }}>
-                        <img 
-                          src={user?.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'T')}&background=ff1e56&color=fff&bold=true`} 
-                          alt="Avatar" 
-                          className="w-full h-full object-cover" 
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                      </div>
-                    </div>
-                    <div className="absolute -bottom-1 -right-1 size-8 bg-emerald-500 rounded-full border-4 border-black flex items-center justify-center shadow-xl">
-                      <div className="size-2 bg-white rounded-full animate-pulse" />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h1 className="text-6xl font-black text-white tracking-tighter mb-4 font-heading leading-none">
-                      <span className="opacity-30 uppercase">Hey</span> {user?.name?.split(' ')[0] || 'Teacher'}!
-                    </h1>
-                    <div className="flex items-center gap-4">
-                      <p className="text-text-muted text-xl font-medium tracking-tight">
-                        You have <span className="text-white font-black underline decoration-primary decoration-[6px] underline-offset-8 decoration-primary/50">{dashboardData?.upcomingClasses?.length || 0} classes</span> scheduled.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-6 w-full xl:w-auto">
-                  <button 
-                    onClick={() => setShowCreateModal(true)}
-                    className="flex-1 xl:flex-none h-16 px-10 rounded-2xl bg-primary text-white font-black text-[10px] tracking-widest uppercase shadow-lg hover:-translate-y-1 active:scale-95 transition-all flex items-center justify-center gap-3 group/btn border border-white/10"
-                    style={{ backgroundColor: 'var(--color-primary)', borderRadius: '24px' }}
-                  >
-                    <Plus size={18} strokeWidth={3} className="group-hover/btn:rotate-90 transition-transform duration-500" />
-                    CREATE
-                  </button>
-                  <button 
-                    onClick={() => setShowProfileMenu(!showProfileMenu)}
-                    className="size-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/15 transition-all text-white/50 hover:text-white"
-                    style={{ borderRadius: '24px' }}
-                  >
-                    <MoreVertical size={24} />
-                  </button>
-                </div>
+            <div className="bg-surface rounded-[40px] p-10 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-2 border-white/20 relative overflow-hidden group hover:translate-y-[-4px] hover:translate-x-[-4px] hover:shadow-[0_30px_60px_rgba(0,0,0,0.15)] transition-all duration-500">
+          <div className="flex items-start justify-between relative z-10">
+            <div className="flex items-center gap-8">
+              <div className="size-32 rounded-[32px] border-4 border-primary/20 p-1 bg-surface shadow-xl shadow-white/5 animate-float overflow-hidden">
+                <img 
+                  src={user?.imageUrl || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"} 
+                  alt="Avatar"
+                  className="w-full h-full rounded-[28px] object-cover bg-background"
+                  referrerPolicy="no-referrer"
+                />
               </div>
-              {/* Internal Accent */}
-              <div className="absolute top-0 right-0 size-64 bg-white/[0.03] rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-5xl font-black tracking-tighter leading-none">
+                    Teacher <span className="text-primary">Panel</span>
+                  </h1>
+                </div>
+                <p className="text-base font-bold text-text-muted max-w-md leading-relaxed">
+                  Welcome back, <span className="text-text-main font-black">{user?.username || 'Teacher'}</span>! You have <span className="text-primary">{dashboardData?.upcomingClasses?.length || 0} sessions</span> scheduled for today.
+                </p>
+              </div>
             </div>
-          )}
+            <div className="flex gap-4 items-center relative">
+              <button 
+                onClick={() => setShowCreateModal(true)}
+                className="bg-primary text-white px-8 py-5 rounded-[24px] font-black text-sm shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all flex items-center gap-3 group/btn"
+              >
+                <div className="size-6 rounded-lg bg-surface/20 flex items-center justify-center group-hover/btn:rotate-90 transition-transform">
+                  <Plus size={16} />
+                </div>
+                New Course
+              </button>
+              <div className="relative">
+                <button 
+                  onClick={() => setShowProfileMenu(!showProfileMenu)}
+                  className="size-14 rounded-[24px] bg-sidebar-hover border-2 border-white/10 flex items-center justify-center text-text-muted hover:text-primary hover:border-primary/30 transition-all shadow-sm"
+                  title="More Options"
+                >
+                  <MoreVertical size={20} />
+                </button>
+                
+                <AnimatePresence>
+                  {showProfileMenu && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 mt-4 w-56 bg-sidebar border-2 border-white/10 rounded-[24px] shadow-2xl z-50 overflow-hidden"
+                    >
+                      <button 
+                        onClick={() => { setShowSettingsModal(true); setShowProfileMenu(false); }}
+                        className="w-full flex items-center gap-4 px-6 py-4 text-sm font-black text-text-muted hover:bg-surface hover:text-primary transition-all border-b border-white/5"
+                      >
+                        <Settings size={18} />
+                        Settings
+                      </button>
+                      <button 
+                        onClick={() => { /* Add profile action */ setShowProfileMenu(false); }}
+                        className="w-full flex items-center gap-4 px-6 py-4 text-sm font-black text-text-muted hover:bg-surface hover:text-primary transition-all"
+                      >
+                        <Users size={18} />
+                        View Profile
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </div>
 
           {/* Quick Stats Blocks */}
-          {activeTab === 'dashboard' && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {[
-                { label: "Active Courses", value: dashboardData?.stats?.activeCourses || 0, color: "text-white", bg: "bg-primary shadow-[0_30px_60px_-15px_rgba(255,30,86,0.4)]", icon: BookOpen, accent: "primary" },
-                { label: "Total Students", value: dashboardData?.stats?.totalStudents || 0, color: "text-white", bg: "glass-dark border-white/10", icon: Users, accent: "accent" },
-                { label: "Live Hours", value: "0", color: "text-white", bg: "glass-dark border-white/10", icon: Video, accent: "info" }
-              ].map((stat, i) => (
-                <div key={i} className={cn("rounded-[48px] p-12 group/stat transition-all duration-500 overflow-hidden relative shadow-lg hover:shadow-2xl hover:-translate-y-2", stat.bg)}>
-                  <div className="relative z-10">
-                    <div className={cn("size-24 rounded-[32px] flex items-center justify-center mb-10 transition-all duration-500 group-hover/stat:rotate-12 group-hover/stat:scale-110", i === 0 ? "bg-white/20 text-white" : "bg-white/5 text-primary")}>
-                      <stat.icon size={36} strokeWidth={2.5} />
-                    </div>
-                    <p className="text-[12px] font-black uppercase tracking-[0.3em] text-white/40 mb-4 font-heading">
-                      {stat.label}
-                    </p>
-                    <p className="text-7xl font-black tracking-tighter leading-none text-white font-heading">{stat.value}</p>
+          <div className="mt-12 grid grid-cols-3 gap-6 relative z-10">
+            {[
+              { label: "Active Courses", value: dashboardData?.stats?.activeCourses || 0, color: "text-white", bg: "bg-sidebar", icon: BookOpen },
+              { label: "Total Students", value: dashboardData?.stats?.totalStudents || 0, color: "text-text-main", bg: "bg-background", icon: Users },
+              { label: "Live Hours", value: "0", color: "text-text-main", bg: "bg-background", icon: Video }
+            ].map((stat, i) => (
+              <div key={i} className={cn("rounded-[32px] p-8 relative overflow-hidden group/stat", stat.bg)}>
+                <div className="relative z-10">
+                  <div className={cn("size-10 rounded-xl flex items-center justify-center mb-4 transition-transform group-hover/stat:scale-110", stat.bg === 'bg-sidebar' ? "bg-surface/10 text-white" : "bg-surface text-primary shadow-sm")}>
+                    <stat.icon size={18} />
                   </div>
-                  <div className="absolute -right-8 -bottom-8 size-40 bg-white/[0.03] rounded-full blur-3xl pointer-events-none" />
+                  <p className={cn("text-[10px] font-black uppercase tracking-widest mb-1", stat.bg === 'bg-sidebar' ? "text-white/40" : "text-text-muted")}>
+                    {stat.label}
+                  </p>
+                  <p className={cn("text-4xl font-black tracking-tighter", stat.color)}>{stat.value}</p>
                 </div>
-              ))}
-            </div>
-          )}
+                <div className="absolute -right-4 -bottom-4 size-20 bg-surface/5 rounded-full blur-2xl group-hover/stat:bg-surface/10 transition-all" />
+              </div>
+            ))}
+          </div>
 
           {/* Background Decorative Elements */}
           <div className="absolute top-0 right-0 size-64 bg-primary/5 rounded-full blur-[100px] -mr-32 -mt-32" />
           <div className="absolute bottom-0 left-0 size-64 bg-primary/5 rounded-full blur-[100px] -ml-32 -mb-32" />
+        </div>
+        )}
 
-        {/* Manage Courses */}
-        <div className="bento-card relative overflow-hidden group/courses !p-12 mb-10">
-          <div className="flex items-center justify-between mb-10 relative z-10">
-            <div>
-              <h2 className="text-4xl font-black tracking-tighter font-heading text-white uppercase">Active <span className="text-emerald-500">Modules</span></h2>
-              <p className="text-xs font-bold text-text-muted uppercase tracking-widest mt-1">Your curriculum overview</p>
-            </div>
-            <button className="h-12 px-8 rounded-2xl bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-white transition-all shadow-xl">
-              VIEW ALL
-            </button>
+        {/* Courses Section */}
+        <div className="bg-surface rounded-[40px] p-10 shadow-[0_10px_30px_rgba(0,0,0,0.05)] border-2 border-white/20">
+          <div className="flex items-center justify-between mb-10">
+            <h2 className="text-3xl font-black tracking-tighter">Active <span className="text-emerald-500">Courses</span></h2>
+            <button className="text-xs text-text-muted font-black uppercase tracking-widest hover:text-primary transition-colors">Manage all</button>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {dashboardData?.teacherModules?.length > 0 ? (
               dashboardData.teacherModules.map((course: any, idx: number) => (
                 <motion.div 
@@ -315,14 +319,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ user, dashboardData
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.1 }}
-                  className="bg-sidebar rounded-[44px] p-8 group hover:bg-surface-hover hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.4)] transition-all duration-700 border border-white/5 relative overflow-hidden"
+                  className="bg-background rounded-[32px] p-8 group hover:bg-surface hover:shadow-2xl hover:shadow-white/5 transition-all duration-500 border border-transparent hover:border-white/5 relative overflow-hidden"
                 >
-                  <div className="aspect-[16/10] rounded-[36px] mb-8 overflow-hidden relative z-10 shadow-2xl border border-white/10">
+                  <div className="aspect-[16/10] rounded-2xl mb-6 overflow-hidden relative z-10 shadow-sm border border-white/5">
                     {course.imageUrl ? (
                       <img 
                         src={course.imageUrl} 
                         alt={course.name}
-                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                         referrerPolicy="no-referrer"
                       />
                     ) : (
@@ -330,36 +334,57 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ user, dashboardData
                         className="w-full h-full flex items-center justify-center text-white"
                         style={{ backgroundColor: course.color || '#f3184c' }}
                       >
-                        <span className="text-5xl font-black tracking-tighter opacity-15 uppercase font-heading">{course.name.substring(0, 2)}</span>
+                        <span className="text-4xl font-black tracking-tighter opacity-20 uppercase">{course.name.substring(0, 2)}</span>
                       </div>
                     )}
-                    {/* Overlay Labels */}
-                    <div className="absolute top-6 left-6 flex gap-3">
-                      <div className="bg-black/60 backdrop-blur-xl px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-white border border-white/10 shadow-2xl">
+                    <div className="absolute top-4 left-4 flex gap-2">
+                      <div className="bg-surface/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-text-main shadow-sm">
                         {course.type || 'COURSE'}
+                      </div>
+                      <div className="bg-primary text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">
+                        ${course.price}
                       </div>
                     </div>
                   </div>
                   <div className="relative z-10">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="font-heading font-black text-2xl group-hover:text-primary transition-colors tracking-tight leading-tight flex-1 pr-6 uppercase">{course.name}</h3>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); openEditModal(course); }}
-                        className="size-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-text-muted hover:text-primary hover:border-primary transition-all shadow-xl"
-                      >
-                        <Settings size={20} />
-                      </button>
-                    </div>
-                    <div className="flex items-center justify-between mt-6">
-                      <div className="flex items-center gap-3">
-                        <div className="size-8 rounded-xl bg-white/5 flex items-center justify-center">
-                          <Users size={14} className="text-primary" />
-                        </div>
-                        <span className="text-xs font-black text-text-muted uppercase tracking-widest leading-none">{course.enrollments?.length || 0} Students</span>
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="font-black text-2xl group-hover:text-primary transition-colors tracking-tight leading-tight flex-1 pr-4">{course.name}</h3>
+                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); openEditModal(course); }}
+                          className="size-10 rounded-xl bg-surface border border-white/5 flex items-center justify-center text-text-muted hover:text-primary hover:border-primary transition-all shadow-sm"
+                        >
+                          <Settings size={18} />
+                        </button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(course.id); }}
+                          className="size-10 rounded-xl bg-surface border border-white/5 flex items-center justify-center text-text-muted hover:text-rose-500 hover:border-rose-500 transition-all shadow-sm"
+                        >
+                          <X size={18} />
+                        </button>
                       </div>
-                      <div className="text-2xl font-black text-white font-heading tracking-tighter leading-none">${course.price}</div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Users size={14} className="text-text-muted" />
+                        <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">{course.enrollments?.length || 0} Students</span>
+                      </div>
+                      <div className="flex -space-x-2">
+                        {course.enrollments?.slice(0, 3).map((en: any, i: number) => (
+                          <div key={i} className="size-8 rounded-full border-2 border-white bg-gray-200 overflow-hidden shadow-sm">
+                            <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${en.userId}`} alt="" />
+                          </div>
+                        ))}
+                        {(course.enrollments?.length || 0) > 3 && (
+                          <div className="size-8 rounded-full border-2 border-white bg-sidebar-hover flex items-center justify-center text-[10px] font-black text-text-muted shadow-sm">
+                            +{(course.enrollments?.length || 0) - 3}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
+                  {/* Decorative shape */}
+                  <div className="absolute -right-4 -bottom-4 size-24 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all duration-500" />
                 </motion.div>
               ))
             ) : (
@@ -387,93 +412,106 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ user, dashboardData
         {/* Live Sessions Card */}
         <div className="bg-surface rounded-[40px] p-10 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-2 border-white/20 relative overflow-hidden hover:translate-y-[-4px] hover:translate-x-[-4px] transition-all duration-500">
           <div className="flex items-center justify-between mb-10 relative z-10">
-            <h2 className="text-4xl font-black tracking-tighter font-heading text-white uppercase">Live <span className="text-primary italic">Rooms</span></h2>
+            <h2 className="text-3xl font-black tracking-tighter">Live <span className="text-blue-500">Sessions</span></h2>
             <button 
               onClick={() => setShowScheduleModal(true)}
-              className="px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-white transition-all shadow-xl"
+              className="text-xs text-text-muted font-black uppercase tracking-widest hover:text-primary transition-colors"
             >
-              SCHEDULE
+              Schedule
             </button>
           </div>
 
           <div className="space-y-6 relative z-10">
             {dashboardData?.upcomingClasses?.length > 0 ? (
               dashboardData.upcomingClasses.map((cls: any) => (
-                <div key={cls.id} className="flex items-center gap-6 p-6 rounded-[32px] bg-white/[0.03] border border-white/5 hover:bg-white/10 hover:border-primary/50 transition-all duration-500 group/session shadow-lg">
-                  <div className="size-16 rounded-[24px] bg-sidebar flex flex-col items-center justify-center text-white shrink-0 group-hover/session:rotate-6 transition-transform shadow-2xl border border-white/10">
-                    <span className="text-[10px] font-black uppercase text-white/40 font-heading tracking-tighter">{new Date(cls.scheduledAt).toLocaleDateString('en-US', { month: 'short' })}</span>
-                    <span className="text-2xl font-black leading-none font-heading">{new Date(cls.scheduledAt).getDate()}</span>
+                <div key={cls.id} className="flex items-center gap-6 p-4 rounded-[24px] hover:bg-background transition-all group border border-transparent hover:border-white/5">
+                  <div className="size-16 rounded-2xl bg-sidebar flex flex-col items-center justify-center text-white shrink-0 shadow-lg group-hover:scale-110 transition-transform">
+                    <span className="text-[10px] font-black uppercase text-white/40">{new Date(cls.scheduledAt).toLocaleDateString('en-US', { month: 'short' })}</span>
+                    <span className="text-2xl font-black leading-none">{new Date(cls.scheduledAt).getDate()}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-heading font-black text-xl text-white group-hover/session:text-primary transition-colors tracking-tight line-clamp-1 uppercase uppercase">{cls.title}</h3>
-                    <div className="flex items-center gap-4 mt-2">
-                       <div className="flex items-center gap-2">
-                         <Clock size={12} className="text-text-muted" />
-                         <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">{new Date(cls.scheduledAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
-                       </div>
-                       <div className="size-1 bg-white/10 rounded-full" />
-                       <span className="text-[10px] font-black text-primary uppercase tracking-widest">{cls.modules?.name}</span>
+                    <h3 className="font-black text-lg truncate group-hover:text-primary transition-colors tracking-tight">{cls.title}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Clock size={12} className="text-text-muted" />
+                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
+                        {new Date(cls.scheduledAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} • {cls.modules?.name}
+                      </p>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => startZoomMeeting(cls)}
-                    className="size-12 rounded-2xl bg-white text-background flex items-center justify-center hover:bg-primary hover:text-white transition-all shadow-2xl transform active:scale-95"
-                  >
-                    <ArrowRight size={20} />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => openEditClassModal(cls)}
+                      className="size-10 rounded-xl bg-surface border border-white/5 flex items-center justify-center text-text-muted hover:text-primary hover:border-primary transition-all shadow-sm opacity-0 group-hover:opacity-100"
+                      title="Edit Session"
+                    >
+                      <Settings size={16} />
+                    </button>
+                    <button 
+                      onClick={() => setShowDeleteClassConfirm(cls.id)}
+                      className="size-10 rounded-xl bg-surface border border-white/5 flex items-center justify-center text-text-muted hover:text-rose-500 hover:border-rose-500 transition-all shadow-sm opacity-0 group-hover:opacity-100"
+                      title="Delete Session"
+                    >
+                      <X size={16} />
+                    </button>
+                    <button 
+                      onClick={() => startZoomMeeting(cls)}
+                      className="size-12 rounded-2xl bg-surface border border-white/5 flex items-center justify-center text-text-muted hover:bg-primary hover:text-white hover:border-primary transition-all shadow-sm group-hover:translate-x-1"
+                      title="Join Meeting"
+                    >
+                      <ArrowRight size={20} />
+                    </button>
+                  </div>
                 </div>
               ))
             ) : (
-              <div className="py-20 text-center rounded-[32px] bg-white/[0.02] border-2 border-dashed border-white/10">
-                <Video size={48} className="text-white/5 mx-auto mb-6" />
-                <p className="text-text-muted text-sm font-black uppercase tracking-widest">No active sessions</p>
+              <div className="py-12 text-center bg-background rounded-[32px] border-2 border-dashed border-white/5">
+                <div className="size-16 rounded-2xl bg-surface shadow-sm flex items-center justify-center mx-auto mb-4">
+                  <Video size={24} className="text-white/10" />
+                </div>
+                <p className="text-text-muted text-xs font-bold">No sessions scheduled.</p>
               </div>
             )}
           </div>
-          <div className="absolute top-0 right-0 size-48 bg-primary/5 rounded-full blur-[100px] -mr-24 -mt-24 pointer-events-none" />
+          <div className="absolute top-0 right-0 size-32 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16" />
         </div>
 
-        {/* Performance Card */}
+        {/* Statistics Card */}
         {activeTab === 'dashboard' && (
-          <div className="bento-card relative overflow-hidden group/perf !p-12 mb-10">
-            <h2 className="text-4xl font-black tracking-tighter mb-12 font-heading text-white uppercase">Perfor<span className="text-amber-500">mance</span></h2>
-            <div className="space-y-10 relative z-10">
-              {[
-                { label: "Course Completion", value: 85, color: "bg-primary shadow-[0_0_20px_rgba(255,30,86,0.3)]" },
-                { label: "Student Satisfaction", value: 94, color: "bg-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.3)]" },
-                { label: "Active Engagement", value: 78, color: "bg-accent shadow-[0_0_20px_rgba(139,92,246,0.3)]" }
-              ].map((stat, i) => (
-                <div key={i} className="space-y-4 group/item">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] group-hover/item:text-white transition-colors">{stat.label}</span>
-                    <span className="text-lg font-black text-white font-heading">{stat.value}%</span>
-                  </div>
-                  <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden shadow-inner border border-white/5">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${stat.value}%` }}
-                      transition={{ duration: 1.5, delay: i * 0.2, ease: "circOut" }}
-                      className={cn("h-full rounded-full transition-all duration-1000", stat.color)}
-                    />
-                  </div>
+        <div className="bg-surface rounded-[40px] p-10 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-2 border-white/20 relative overflow-hidden hover:translate-y-[-4px] hover:translate-x-[-4px] transition-all duration-500">
+          <h2 className="text-3xl font-black tracking-tighter mb-10">Perfor<span className="text-amber-500">mance</span></h2>
+          <div className="space-y-8">
+            {[
+              { label: "Course Completion", value: 85, color: "bg-primary" },
+              { label: "Student Engagement", value: 92, color: "bg-blue-500" },
+              { label: "Average Rating", value: 98, color: "bg-emerald-500" }
+            ].map((stat, i) => (
+              <div key={i} className="group">
+                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-3">
+                  <span className="text-text-muted group-hover:text-text-main transition-colors">{stat.label}</span>
+                  <span className="text-text-main">{stat.value}%</span>
                 </div>
-              ))}
-            </div>
-            {/* Growth Indicator */}
-            <div className="mt-12 p-8 bg-white/[0.03] rounded-[36px] border border-white/5 relative z-10 overflow-hidden group/growth">
-              <div className="flex items-center gap-6 relative z-10">
-                <div className="size-16 rounded-[24px] bg-emerald-500/10 flex items-center justify-center text-emerald-500 shadow-inner group-hover/growth:scale-110 transition-transform">
-                  <TrendingUp size={32} />
-                </div>
-                <div>
-                  <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Monthly Momentum</p>
-                  <p className="text-3xl font-black text-white font-heading">+12.4% <span className="text-xs font-bold text-emerald-500 ml-2">INCREASE</span></p>
+                <div className="h-3 bg-sidebar-hover rounded-full overflow-hidden p-0.5">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${stat.value}%` }}
+                    className={cn("h-full rounded-full shadow-lg", stat.color)}
+                  />
                 </div>
               </div>
-              <div className="absolute -right-8 -bottom-8 size-32 bg-emerald-500/5 rounded-full blur-[60px] pointer-events-none" />
-            </div>
-            <div className="absolute -left-12 -bottom-12 size-64 bg-amber-500/5 rounded-full blur-[100px] pointer-events-none" />
+            ))}
           </div>
+          <div className="mt-10 p-6 bg-background rounded-[32px] border border-white/5">
+            <div className="flex items-center gap-4">
+              <div className="size-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                <TrendingUp size={24} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Monthly Growth</p>
+                <p className="text-xl font-black">+0% <span className="text-xs font-bold text-emerald-500">vs last month</span></p>
+              </div>
+            </div>
+          </div>
+        </div>
         )}
 
         {/* Help Card */}
@@ -975,8 +1013,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ user, dashboardData
           </div>
         )}
       </AnimatePresence>
-      </motion.div>
-    </>
+    </motion.div>
   );
 };
 

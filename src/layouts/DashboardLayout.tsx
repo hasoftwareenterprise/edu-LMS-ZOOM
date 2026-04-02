@@ -31,27 +31,26 @@ const SidebarItem = ({ icon: Icon, label, active, onClick, collapsed }: SidebarI
   <button
     onClick={onClick}
     className={cn(
-      "flex items-center gap-4 p-2 rounded-2xl transition-all duration-500 w-full group relative",
+      "flex items-center gap-4 p-3 rounded-2xl transition-all duration-300 w-full group relative",
       active 
-        ? "bg-primary text-white shadow-[0_20px_40px_-5px_rgba(255,30,86,0.4)] scale-105" 
-        : "text-text-muted hover:text-text-main hover:bg-white/5"
+        ? "bg-primary text-white shadow-lg shadow-primary/30" 
+        : "text-text-muted hover:text-text-main hover:bg-surface/5"
     )}
-    style={active ? { background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%)' } : {}}
   >
     <div className={cn(
       "size-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300",
-      active ? "bg-white/20" : "bg-white/5 group-hover:bg-white/10"
+      active ? "bg-surface/20" : "bg-surface/5 group-hover:bg-surface/10"
     )}>
-      <Icon size={20} className={cn("transition-transform duration-500", active ? "scale-110" : "group-hover:scale-110")} />
+      <Icon size={20} className={cn("transition-transform duration-300", active ? "scale-110" : "group-hover:scale-110")} />
     </div>
     <span className={cn(
-      "font-black text-[10px] uppercase tracking-[0.2em] transition-all duration-500 whitespace-nowrap overflow-hidden",
+      "font-bold text-sm transition-all duration-300 whitespace-nowrap overflow-hidden",
       collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
     )}>
       {label}
     </span>
     {collapsed && (
-      <div className="absolute left-full ml-4 px-4 py-2 bg-black/90 backdrop-blur-xl border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 pointer-events-none transition-all whitespace-nowrap z-50 shadow-2xl">
+      <div className="absolute left-full ml-4 px-3 py-1.5 bg-sidebar-hover border border-white/10 rounded-xl text-xs opacity-0 group-hover:opacity-100 pointer-events-none transition-all whitespace-nowrap z-50 shadow-xl">
         {label}
       </div>
     )}
@@ -168,12 +167,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, user, onLog
             <div className="bg-surface rounded-2xl px-8 py-3 shadow-sm border border-white/5 font-bold text-base">
               Dashboard
             </div>
-            <div className="relative w-full max-w-md">
-              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted" />
+            <div className="relative w-full max-w-xl">
+              <Search size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-text-muted" />
               <input 
                 type="text" 
                 placeholder="What assignment are you looking for?" 
-                className="w-full bg-surface border border-white/10 rounded-2xl py-2.5 pl-12 pr-4 text-xs font-medium focus:outline-none focus:border-primary/50 transition-all shadow-inner"
+                className="w-full bg-surface border border-white/5 rounded-2xl py-3 pl-14 pr-6 text-sm focus:outline-none focus:border-primary/30 transition-all shadow-sm"
               />
             </div>
           </div>
