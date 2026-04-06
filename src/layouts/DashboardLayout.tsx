@@ -141,7 +141,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   <AvatarFallback className="bg-primary/20 text-primary font-black text-[10px]">{displayName.charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div className="absolute -top-1 -right-1 size-3.5 bg-primary rounded-full flex items-center justify-center border-2 border-background shadow-lg shadow-primary/20">
-                    <Verified className="size-2 text-white" />
+                  <Verified className="size-2 text-white" />
                 </div>
               </div>
               <div className="overflow-hidden">
@@ -205,7 +205,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                       <AvatarFallback>{displayName.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div className="absolute -top-1 -right-1 size-4 bg-primary rounded-full flex items-center justify-center border-2 border-sidebar shadow-[0_0_10px_rgba(243,24,76,0.5)]">
-                        <Verified className="size-2.5 text-white" />
+                      <Verified className="size-2.5 text-white" />
                     </div>
                     <p className="text-[9px] font-black uppercase text-text-muted opacity-40">Joined: {user?.createdAt?.slice(0, 10)}</p>
                     <p className={`${roleColor} text-[9px] font-black px-2 py-0.5 rounded-lg w-fit uppercase tracking-widest`}>{getRoleLabel(user?.role)}</p>
@@ -246,18 +246,37 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
           {/* Right actions */}
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2.5 px-3 py-2 bg-white/[0.03] border border-white/5 rounded-2xl hover:bg-white/[0.05] transition-all">
-              <div className="relative shrink-0">
-                <Avatar className="size-10 rounded-xl border-2 border-primary/30">
-                  <AvatarImage src={user?.profilePhotoUrl} />
-                  <AvatarFallback className="bg-primary/20 text-primary font-black text-sm">{displayName.charAt(0).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div className="absolute -bottom-1 -right-1 size-3.5 bg-success rounded-full border-2 border-background shadow-lg" title="Online" />
+            <div className="relative shrink-0">
+              {/* Modern Ripple Effect (Header Top Corner Only) */}
+              <div className="absolute inset-0 animate-ripple-header rounded-full border border-primary/40 pointer-events-none" />
+
+              <div className="custom-avatar-container cursor-pointer hover:scale-105 transition-transform">
+                <div className="custom-avatar-inner-wrap">
+                  <div className="avatar-character">
+                    <div className="inner">
+                      <div className="hair-side"></div>
+                      <div className="hair-above"></div>
+                      <div className="head">
+                        <div className="face">
+                          <div className="eyes">
+                            <div className="eye-left eye-base"></div>
+                            <div className="eye-right eye-base"></div>
+                          </div>
+                          <div className="nose"></div>
+                          <div className="mouth"></div>
+                        </div>
+                      </div>
+                      <div className="ears">
+                        <div className="ear-left"></div>
+                        <div className="ear-right"></div>
+                      </div>
+                      <div className="neck"></div>
+                    </div>
+                    <div className="body"></div>
+                  </div>
+                </div>
               </div>
-              <div className="hidden lg:flex flex-col">
-                <p className="font-black text-[11px] leading-tight tracking-tight text-white">{displayName}</p>
-                <p className={`text-[9px] font-black uppercase tracking-widest ${user?.role === 'ADMIN' ? 'text-warning' : user?.role === 'TEACHER' ? 'text-primary' : 'text-success'}`}>{getRoleLabel(user?.role)}</p>
-              </div>
+              <div className="absolute -bottom-1 -right-1 size-3 bg-success rounded-full border-2 border-background shadow-lg" title="Online" />
             </div>
           </div>
         </header>

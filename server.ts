@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import cors from "cors";
 import jwt from "jsonwebtoken";
@@ -9,7 +10,7 @@ import dotenv from "dotenv";
 import { PrismaClient, users_role, teacher_approval_status } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import axios from "axios";
-import { google } from "googleapis";
+// Google Drive integration removed as per user request
 
 dotenv.config();
 
@@ -17,61 +18,39 @@ const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3002;
 const prisma = new PrismaClient();
 
-// ── Google Drive Service Account ──
-const GOOGLE_SERVICE_ACCOUNT = {
-  type: "service_account",
-  project_id: "edulms-lms-drive-manager",
-  private_key_id: "6e6d69ac4980c20d2a0b573b11dbc6162631c887",
-  private_key: "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCnoZA0eUIrtOrC\nKWpT2rlrzMkHBvzX3CrFyBCAL79p0Szc7zOiwZvAvV14p+vo8HqUL7Z47YsC0jb0\nM1zStkdP0Uze1r4jcirJEiGFyXgnHl5uPdBJ7VP+cqUhCb48cWp/E0ZGtKVckkie\naaREdDwOiNj3TT9Q36PXB4HRWMSkBbs4u3fm5TQZmhq4/9iKjWLGqmTbWVc7Eyf4\nzs1nKLLrKcm60psVB3abUmjnJS8jXBnSll/Ny1B9uLBvKuQBbArKy1plZ2TXTXS6\nd5O9q6iaGEdEMAs5E88iukYFFgvwVhKHUG1oyivY8ARnhZeZ02EvYNsFvQU0FbOQ\n8jLQEwqDAgMBAAECggEARrH9dhPZk0M2anI69GhfIJZ6rEGQJHqBkuqcbPjkscBb\nCYUu8xFnkHHHTxbCuWGmj2DqKNNTc3KNOjriKJqiMfSilxPi7tECG/C0bJKqvuQ1\noOmE1K4pWJUSCNFarUX9VgUKvscBP2DVLrxF+yiSv6dajKlioTsFsoCHvIhh8aRI\nJaRuJ7m3PGnbr+zNXLbQKHjILXAe9cY7EFkiuaRLqPUMxFOz/oG1w25bJPd5MuR2\n0/sH7q3KDPLnnIPv4+Y3PRm0G3o0w7mDzYGzVA08tI3Y1mXjl8mXFSN0Zq7gvx7x\nkOWC6kMKZ7tLnqE1y9wdAJY1VQCMExXoI0TaTtrmgQKBgQDZ1gR/kEjQfZ77cV5U\nC2YTt3cqPE+xNiC5SFN+hGJaE9Ld39S6OvFYRkfrxMnX0YsFjdSwHB7BOKNFnFnD\niMj2SqRBjJD1b5DFR1PcYsPJfj5WlBN0i2ue3OqxFm5UtCHPMpYsaJnRe/FsKqUc\nqN8V9gK1QV9dQP8HT5ZbqTYqfQKBgQDFzVhqf6cJ0zT5sRf1oUr8jj9ZL/lI4PoC\nA+8ldaP3lgI/pZBiIh4G3CajnrCKR2sQfeTIAWYNqn6Qm6i8Ey8H5XoFE3B/YBl0\nf01CaXiXKjEWH5mC0pRn7hPBkf5NHW+Y5Wa6K3D7H0E4u/2D7r7fzW3d3VzqxYI4\nbpS7eDJkqQKBgCqQMY6Ct+GU8z2PU4oZXkD3hR3H+fHIHEgMlsEtVfWY6DVo3f6z\nAJxrVGJCNsw7BvYf2PMVlp3C+OAVUNbx9Ec2CHc7I7yByHm0j+34HyYEtEBxiJaE\nbmXmFrscW2bU/I0C6F7pZHkZ9O1YlNJ+TRmfqE2tXiH5e9nzVt3E9b8RAoGASBfx\nL/u9+xbOVjRqBdW3b3pWDHXV+KFjFKxBhvJdF9s3D9hUMzxYMtP0hwz3yJp9Mb7m\nvB6ADJt5+d4+K46hEG4kHF1n7+lWJnITJHXfNK3gn/FHl/RX2mhvMV/VFDWPuYM/\nBilKPGt6B+1aqFQs4DYp5RbT7oWHfPHzUU4hxqkCgYEAzG36kWM6FZ59Y4TDiN0L\nJkRlN4UCyOxlLIc2gCU2NXTd5TfBFHoJY4Q3F7E1RmEGHa9p9CeOYX+t5GsLRGFT\n0YGzK+6AwJ7i8a/3GS+mq+aPJq/x5YWLX8gA7B3r5V8lX5E4c2LyV0J9b8D3YL7k\nR5b8s3WgWW4HE34+L5B4y/U=\n-----END PRIVATE KEY-----\n",
-  client_email: "drive-manager@edulms-lms-drive-manager.iam.gserviceaccount.com",
-  client_id: "123456789",
-  auth_uri: "https://accounts.google.com/o/oauth2/auth",
-  token_uri: "https://oauth2.googleapis.com/token",
-};
+prisma.$connect()
+  .then(() => console.log("[PRISMA] Database connected successfully"))
+  .catch(e => console.error("[PRISMA] Database connection failed:", e));
 
-async function createDriveFolder(folderName: string): Promise<{ folderId: string; folderUrl: string } | null> {
-  try {
-    const auth = new google.auth.GoogleAuth({
-      credentials: GOOGLE_SERVICE_ACCOUNT,
-      scopes: ["https://www.googleapis.com/auth/drive"],
-    });
-    const drive = google.drive({ version: "v3", auth });
-    const response = await drive.files.create({
-      requestBody: {
-        name: folderName,
-        mimeType: "application/vnd.google-apps.folder",
-      },
-      fields: "id",
-    });
-    const folderId = response.data.id!;
-    // Make folder accessible to anyone with link
-    await drive.permissions.create({
-      fileId: folderId,
-      requestBody: { role: "reader", type: "anyone" },
-    });
-    return { folderId, folderUrl: `https://drive.google.com/drive/folders/${folderId}` };
-  } catch (error: any) {
-    console.error("Google Drive folder creation failed:", error.message);
-    return null;
-  }
-}
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// --- Synchronization Logic ---
 
 // Bootstrap default users (admin, sample teacher, sample student)
 async function bootstrapUsers() {
+  const adminEmail = (process.env.ADMIN_EMAIL || "admin@mail.com").trim();
+  const adminPassword = (process.env.ADMIN_PASSWORD || "admin@123").trim();
+
+  await prisma.users.deleteMany({ where: { OR: [{ email: adminEmail }, { username: "admin" }] } }).catch(() => {});
+
   const testUsers = [
-    { email: "admin@mail.com", username: "admin", password: "admin@123", role: users_role.ADMIN, fullName: "System Admin", approvalStatus: teacher_approval_status.APPROVED },
+    { email: adminEmail, username: "admin", password: adminPassword, role: users_role.ADMIN, fullName: "System Admin", approvalStatus: teacher_approval_status.APPROVED },
     { email: "teacher1@mail.com", username: "teacher1", password: "password123", role: users_role.TEACHER, fullName: "John Teacher", approvalStatus: teacher_approval_status.APPROVED },
     { email: "student1@mail.com", username: "student1", password: "password123", role: users_role.STUDENT, fullName: "Jane Student", approvalStatus: teacher_approval_status.APPROVED },
   ];
 
   for (const user of testUsers) {
     try {
+      console.log(`[BOOTSTRAP] Checking user: ${user.email}`);
       const existing = await prisma.users.findFirst({
         where: { OR: [{ email: user.email }, { username: user.username }] }
       });
       const hashedPassword = await bcrypt.hash(user.password, 10);
 
       if (!existing) {
+        console.log(`[BOOTSTRAP] User ${user.email} not found. Creating...`);
         const newUser = await prisma.users.create({
           data: {
             id: uuidv4(),
@@ -85,7 +64,7 @@ async function bootstrapUsers() {
             updatedAt: new Date(),
           } as any,
         });
-        console.log(`Bootstrapped user: ${user.email}`);
+        console.log(`[BOOTSTRAP] Successfully created user: ${user.email}`);
 
         if (user.username === "teacher1") {
           const courseId = uuidv4();
@@ -118,16 +97,23 @@ async function bootstrapUsers() {
           });
         }
       } else {
+        console.log(`[BOOTSTRAP] User ${user.email} exists. Updating credentials...`);
         await prisma.users.update({
           where: { id: existing.id },
-          data: { password: hashedPassword, role: user.role, approvalStatus: user.approvalStatus } as any
+          data: { 
+            password: hashedPassword, 
+            role: user.role, 
+            approvalStatus: user.approvalStatus,
+            fullName: user.fullName 
+          } as any
         });
+        console.log(`[BOOTSTRAP] Successfully updated user: ${user.email}`);
       }
     } catch (err: any) {
       if (err.code === 'P2002') {
-        console.log(`Bootstrap: ${user.email} already exists, skipping.`);
+        console.log(`[BOOTSTRAP] Conflict on user ${user.email}, skipping.`);
       } else {
-        console.error(`Bootstrap error for ${user.email}:`, err);
+        console.error(`[BOOTSTRAP] Critical error for ${user.email}:`, err);
       }
     }
   }
@@ -266,20 +252,31 @@ app.post("/api/auth/signup", async (req, res) => {
 
 // Auth: Login
 app.post("/api/auth/login", async (req, res) => {
-  const { email, password } = req.body;
+  const email = String(req.body.email || "").trim();
+  const password = String(req.body.password || "");
+  console.log(`[LOGIN TRACE] Body: ${JSON.stringify(req.body)}`);
+  console.log(`[LOGIN TRACE] Attempting login: ${email}, BodyKeys: ${Object.keys(req.body)}`);
 
   try {
+    const allUsers = await prisma.users.findMany();
+    console.log(`[LOGIN DEBUG] Total DB Users: ${allUsers.length}, Registered: [${allUsers.map(u => u.email).join(", ")}]`);
+
     const user = await prisma.users.findFirst({
-      where: { OR: [{ email }, { username: email }] },
+      where: { OR: [{ email: email }, { username: email }] },
       include: { sessions: true }
     });
 
     if (!user) {
+      console.log(`[LOGIN TRACE] User NOT found for: ${email}`);
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // Direct comparison for bootstrapped users or bcrypt
-    const isMatch = await bcrypt.compare(password, user.password).catch(() => false) || password === user.password;
+    const isBcryptMatch = await bcrypt.compare(password, user.password).catch(() => false);
+    const isPlainMatch = password === user.password;
+    const isMatch = isBcryptMatch || isPlainMatch;
+
+    console.log(`[LOGIN TRACE] UserFound: ${user?.email}, Match: ${isMatch}`);
+    console.log(`[LOGIN TRACE] User: ${user.email}, Bcrypt: ${isBcryptMatch}, Plain: ${isPlainMatch}, Stored: ${user.password.startsWith('$2') ? 'HASHED' : 'PLAIN'}`);
 
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
@@ -518,18 +515,6 @@ app.post("/api/courses", verifySession, async (req: any, res) => {
   }
 
   try {
-    // Auto-create Google Drive folder if a name is provided
-    let driveFolderUrl: string | null = null;
-    let driveStoredName = googleDriveFolderName || null;
-    if (googleDriveFolderName) {
-      const driveResult = await createDriveFolder(googleDriveFolderName);
-      if (driveResult) {
-        driveFolderUrl = driveResult.folderUrl;
-        driveStoredName = googleDriveFolderName; // keep the name, store URL as the drive link
-        console.log(`Drive folder created: ${driveResult.folderUrl}`);
-      }
-    }
-
     const course = await prisma.modules.create({
       data: {
         id: uuidv4(),
@@ -543,12 +528,10 @@ app.post("/api/courses", verifySession, async (req: any, res) => {
         startTime: startTime || "09:00",
         endTime: endTime || "10:00",
         teacherId: userId,
-        googleDriveFolderName: driveStoredName,
-        googleDriveFolderUrl: driveFolderUrl,
         updatedAt: new Date()
       } as any
     });
-    res.status(201).json({ ...course, googleDriveFolderUrl: driveFolderUrl });
+    res.status(201).json(course);
   } catch (error) {
     console.error("Course creation error:", error);
     res.status(500).json({ message: "Failed to create course" });
@@ -1075,6 +1058,7 @@ app.get("/api/teacher/courses", verifySession, async (req: any, res) => {
   } catch (err) { res.status(500).json({ message: "Error fetching courses" }); }
 });
 
+
 // User: Update own profile
 app.put("/api/auth/profile", verifySession, async (req: any, res) => {
   const userId = req.user.userId;
@@ -1100,6 +1084,11 @@ app.put("/api/auth/profile", verifySession, async (req: any, res) => {
 
 
 async function startServer() {
+  // Always bootstrap users to ensure admin credentials in .env are synchronized and hashed
+  await bootstrapUsers().catch(err => {
+    console.error("[BOOTSTRAP] System synchronization failed:", err);
+  });
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { 
