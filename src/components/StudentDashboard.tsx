@@ -1,286 +1,292 @@
-import React from "react";
-import { motion } from "framer-motion";
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
 import { 
-  Play, 
-  Clock, 
-  Star, 
-  TrendingUp, 
-  Video, 
-  BookOpen, 
-  Calendar, 
-  ArrowRight,
-  ChevronRight,
-  Settings,
-  Search
-} from "lucide-react";
-import { cn } from "@/src/lib/utils";
+  BookOpen, Video, Clock, ChevronRight, Search, 
+  Calendar, Star, GraduationCap, ArrowRight, Zap, 
+  CheckCircle2, Package, Globe, ShieldCheck, Verified,
+  PlayCircle, HelpCircle, ArrowLeft, ArrowUpRight,
+  Sparkles, DollarSign, Users, Award
+} from 'lucide-react';
+import { Button } from './ui/interfaces-button';
+import { Input } from './ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import GradientButton from './ui/button-1';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 
 interface StudentDashboardProps {
   user: any;
   dashboardData: any;
   startZoomMeeting: (meeting: any) => void;
-  activeTab?: string;
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+  token: string | null;
 }
 
-const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, dashboardData, startZoomMeeting, activeTab = 'dashboard' }) => {
-  const today = new Date();
-  const days = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-  const dates = [5, 5, 6, 7, 8, 9, 9]; // Mock dates for the visual
+const ClassCard: React.FC<{ course: any; onClick: () => void }> = ({ course, onClick }) => (
+  <motion.div 
+    whileHover={{ y: -8 }} 
+    onClick={onClick}
+    className="glass rounded-2xl p-6 cursor-pointer group hover:border-primary/40 hover:bg-white/[0.015] transition-all duration-500 relative overflow-hidden"
+  >
+    <div className="relative aspect-video rounded-xl overflow-hidden mb-5 shadow-2xl">
+        {course.imageUrl ? (
+           <img src={course.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition-all duration-700" alt="" />
+        ) : (
+           <div className="w-full h-full bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center"><BookOpen size={40} className="text-primary opacity-20" /></div>
+        )}
+        <div className="absolute top-4 left-4"><span className="glass border-white/20 px-3 py-1 rounded-full text-[9px] font-black tracking-widest text-white uppercase">Education</span></div>
+        <div className="absolute bottom-4 right-4"><div className="size-2 rounded-full bg-success shadow-[0_0_10px_#10b981]" /></div>
+    </div>
+    
+    <div className="flex-1 space-y-2">
+        <div className="flex items-center gap-2">
+            <div className="size-2 rounded-full" style={{ background: course.color || '#f3184c' }} />
+            <span className="text-[9px] font-bold uppercase tracking-widest text-text-muted opacity-40">Class</span>
+        </div>
+        <h3 className="text-lg font-black truncate group-hover:text-primary transition-colors tracking-tight uppercase">{course.name}</h3>
+        <p className="text-text-muted text-[11px] line-clamp-2 leading-relaxed opacity-50 font-medium h-9">{course.description}</p>
+    </div>
 
-  return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="grid grid-cols-12 gap-8 bg-gradient-to-br from-background to-surface p-8 rounded-[48px] shadow-inner"
-    >
-      {/* Left Column */}
-      {(activeTab === 'dashboard' || activeTab === 'live') && (
-      <div className={cn("space-y-8", activeTab === 'live' ? "col-span-12" : "col-span-12 lg:col-span-8")}>
-        {/* User Profile Card */}
-        {activeTab === 'dashboard' && (
-        <div className="bg-surface rounded-[40px] p-10 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-2 border-white/20 relative overflow-hidden group hover:translate-y-[-4px] hover:translate-x-[-4px] transition-all duration-500">
-          <div className="flex items-start justify-between relative z-10">
-            <div className="flex items-center gap-8">
-              <div className="size-32 rounded-[32px] border-4 border-primary/20 p-1 bg-surface shadow-xl shadow-white/5 animate-float overflow-hidden">
-                {user?.imageUrl ? (
-                  <img 
-                    src={user.imageUrl} 
-                    alt={user.name || 'User'}
-                    className="w-full h-full rounded-[28px] object-cover"
-                    referrerPolicy="no-referrer"
-                  />
+    <div className="flex items-center justify-between pt-5 border-t border-white/5 mt-5">
+        <div className="flex flex-col gap-0.5">
+            <span className="text-[8px] font-black text-text-muted uppercase tracking-widest opacity-40">Status</span>
+            <span className="text-xs font-black flex items-center gap-1.5 uppercase">
+                <CheckCircle2 size={12} className="text-success" /> Active
+            </span>
+        </div>
+        <div className="size-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-primary hover:text-white transition-all shadow-lg">
+            <ArrowUpRight size={18} />
+        </div>
+    </div>
+  </motion.div>
+);
+
+const StatMini: React.FC<{ label: string; value: string; icon: any }> = ({ label, value, icon: Icon }) => (
+    <div className="glass rounded-[1.5rem] px-5 py-4 flex items-center gap-4 border border-white/5 hover:border-primary/20 transition-all group">
+        <div className="size-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary group-hover:scale-110 transition-transform shadow-inner">
+            <Icon size={18} />
+        </div>
+        <div>
+            <p className="text-[9px] font-black text-text-muted uppercase tracking-widest leading-none mb-1 opacity-40">{label}</p>
+            <p className="text-base font-black text-white tracking-tighter leading-none">{value}</p>
+        </div>
+    </div>
+);
+
+export default function StudentDashboard({ user, dashboardData, startZoomMeeting, activeTab, setActiveTab, token }: StudentDashboardProps) {
+  const [courses, setCourses] = useState<any[]>([]);
+  const [availableModules, setAvailableModules] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<any>(null);
+  const [classTab, setClassTab] = useState<'vectors' | 'hub' | 'assets'>('vectors');
+  const [search, setSearch] = useState('');
+  const [enrolling, setEnrolling] = useState<string | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState<any>(null);
+  const [showHistory, setShowHistory] = useState(false);
+
+  const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
+  const displayName = user?.fullName || user?.username;
+  const now = new Date();
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      setLoading(true);
+      try {
+        const r = await axios.get('/api/student/my-courses', authHeaders); // Keeping API route but terminology changes in UI
+        setCourses(r.data);
+      } catch {}
+      setLoading(false);
+    };
+    if (activeTab === 'classes' || activeTab === 'dashboard') fetchCourses();
+    
+    if (activeTab === 'explore') {
+      axios.get("/api/student/available-modules", authHeaders)
+      .then(res => setAvailableModules(res.data))
+      .catch(err => console.error("Error fetching available modules:", err));
+    }
+  }, [activeTab, token]);
+
+  const handleEnroll = async (moduleId: string) => {
+    setEnrolling(moduleId);
+    try {
+      await axios.post("/api/student/enroll", { moduleId }, authHeaders);
+      setShowPaymentModal(null);
+      setActiveTab('classes');
+      window.location.reload(); 
+    } catch (err: any) {
+      alert("Encryption failure in payment gateway. Please retry.");
+    } finally {
+      setEnrolling(null);
+    }
+  };
+
+  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const upcomingMeetings = courses.flatMap(c => (c.live_classes || []).map((m: any) => ({ ...m, courseName: c.name, courseColor: c.color })))
+    .filter(m => new Date(m.scheduledAt) > twentyFourHoursAgo)
+    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+
+  if (activeTab === 'dashboard') {
+    return (
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-10">
+        <div className="relative overflow-hidden rounded-2xl bg-surface-2 border border-white/5 p-10 md:p-14 mb-8">
+            <div className="absolute -right-20 -top-20 size-[400px] bg-primary/10 blur-[130px] rounded-full" />
+            <div className="absolute left-1/4 -bottom-20 size-[300px] bg-primary/5 blur-[100px] rounded-full" />
+            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-10">
+                <div className="space-y-5">
+                    <div className="flex items-center gap-4 mb-2"><div className="size-14 rounded-2xl bg-primary flex items-center justify-center shadow-2xl shadow-primary/40"><GraduationCap size={28} className="text-white" /></div></div>
+                    <h1 className="text-4xl md:text-6xl font-black tracking-tighter leading-[0.95]">Welcome Back, <br /><span className="text-gradient underline decoration-white/5 decoration-4">{displayName}</span>.</h1>
+                    <p className="text-text-muted text-sm md:text-base max-w-lg leading-relaxed font-black opacity-60 uppercase tracking-tighter">Your academic progress is on track. <br />You are enrolled in <span className="text-text-main opacity-100 italic">{courses.length} active classes</span>.</p>
+                </div>
+                <div className="shrink-0 flex gap-4">
+                    <StatMini label="Class Count" value={String(courses.length)} icon={Package} />
+                    <StatMini label="Live Sessions" value={String(upcomingMeetings.length)} icon={PlayCircle} />
+                </div>
+            </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            <div className="lg:col-span-2 space-y-8">
+               <div className="flex items-center justify-between px-2"><h2 className="font-black text-2xl tracking-tighter uppercase italic">Upcoming Sessions</h2><button onClick={() => setActiveTab('classes')} className="text-[10px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2">Full Agenda <ChevronRight size={14} /></button></div>
+                {upcomingMeetings.length === 0 ? (
+                    <div className="glass rounded-[2.5rem] p-16 text-center border-dashed border-white/10 group hover:border-primary/20 transition-all"><div className="size-16 rounded-3xl bg-white/[0.03] flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform"><Video size={32} className="text-text-muted opacity-20" /></div><p className="text-text-muted text-xs font-black uppercase tracking-[0.3em]">No upcoming vectors scheduled</p></div>
                 ) : (
-                  <img 
-                    src={user?.imageUrl || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"} 
-                    alt="Avatar"
-                    className="w-full h-full rounded-[28px] object-cover bg-background"
-                    referrerPolicy="no-referrer"
-                  />
+                    <div className="space-y-5">
+                       {upcomingMeetings.slice(0, 3).map((m, idx) => {
+                          const dt = new Date(m.scheduledAt);
+                          const isNow = now.getTime() > dt.getTime() - 15 * 60 * 1000 && now.getTime() < dt.getTime() + 24 * 60 * 60 * 1000;
+                          return (
+                             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.1 }} key={m.id} className="glass rounded-[2.5rem] p-6 flex items-center gap-6 group hover:border-primary/20 transition-all relative overflow-hidden">
+                                <div className="absolute right-0 top-0 h-full w-1.5 opacity-40" style={{ background: m.courseColor || '#f3184c' }} />
+                                <div className="size-16 rounded-2xl flex flex-col items-center justify-center shrink-0 border-4 border-background/20 shadow-2xl" style={{ background: m.courseColor || '#f3184c' }}>
+                                    <span className="text-[10px] font-black text-white/90 uppercase leading-none mb-1 tracking-tighter">{dt.toLocaleString('default', { month: 'short' })}</span>
+                                    <span className="text-2xl font-black text-white leading-none tracking-tighter">{dt.getDate()}</span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-3 mb-2"><div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1 rounded-full"><div className="size-2 rounded-full" style={{ background: m.courseColor || '#f3184c' }} /><span className="text-[10px] font-black text-text-muted uppercase tracking-widest">{m.courseName}</span></div>{isNow && <span className="text-[10px] font-black text-primary animate-pulse tracking-[0.2em] flex items-center gap-1.5 uppercase"><div className="size-1.5 bg-primary rounded-full shadow-[0_0_10px_#f3184c]" /> LIVE NOW</span>}</div>
+                                    <h3 className="font-black text-xl truncate tracking-tight">{m.topic}</h3>
+                                    <p className="text-xs font-black text-text-muted uppercase tracking-widest mt-2">{dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} &bull; Active Node</p>
+                                </div>
+                                {isNow && m.zoomMeetingId ? (
+                                    <Button onClick={() => startZoomMeeting(m)} className="rounded-2xl h-12 shadow-xl shadow-primary/20 bg-primary">Join Now</Button>
+                                ) : (
+                                    <div className="size-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-primary/10 group-hover:text-primary transition-all cursor-pointer"><ChevronRight size={20} /></div>
+                                )}
+                             </motion.div>
+                          );
+                       })}
+                    </div>
                 )}
-              </div>
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-5xl font-black tracking-tighter leading-none">
-                    {user.name || user.email.split('@')[0]}
-                  </h1>
-                  <div className="bg-primary/10 text-primary text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest border border-primary/20">
-                    Student
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm font-bold text-text-muted">
-                    <Calendar size={14} className="text-primary" />
-                    Member since: <span className="text-text-main font-black">April 2026</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm font-bold text-text-muted">
-                    <BookOpen size={14} className="text-primary" />
-                    Enrolled in: <span className="text-text-main font-black">{dashboardData?.enrolledCourses?.length || 0} Courses</span>
-                  </div>
-                </div>
-              </div>
             </div>
-          </div>
-
-          {/* Date Picker Mockup */}
-          <div className="mt-12 bg-sidebar rounded-[32px] p-8 flex items-center justify-between relative z-10 shadow-2xl shadow-black/20">
-            <button className="size-10 rounded-full bg-surface/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-surface/10 transition-all">
-              <ChevronRight className="rotate-180" size={20} />
-            </button>
-            <div className="flex items-center gap-10">
-              {days.map((day, i) => (
-                <div key={i} className="flex flex-col items-center gap-3 group/day cursor-pointer">
-                  <span className={cn(
-                    "text-[10px] font-black uppercase tracking-widest transition-colors",
-                    day === 'Tue' ? "text-primary" : "text-white/20 group-hover/day:text-white/40"
-                  )}>
-                    {dates[i]}
-                  </span>
-                  <div className={cn(
-                    "size-12 rounded-2xl flex items-center justify-center text-sm font-black transition-all",
-                    day === 'Tue' 
-                      ? "bg-primary text-white shadow-xl shadow-primary/40 scale-110" 
-                      : "text-white/40 hover:bg-surface/5 hover:text-white"
-                  )}>
-                    {day}
-                  </div>
-                </div>
-              ))}
+            <div className="space-y-8">
+                 <h2 className="font-black text-2xl tracking-tighter italic uppercase px-2">My Classes</h2>
+                 <div className="space-y-4">
+                    {courses.slice(0, 4).map((c) => (
+                        <div key={c.id} onClick={() => { setSelectedCourse(c); setClassTab('vectors'); setActiveTab('classes'); }} className="glass rounded-[1.5rem] p-5 flex items-center gap-5 cursor-pointer hover:bg-white/[0.05] hover:border-primary/20 transition-all group">
+                             <div className="relative shrink-0"><div className="size-14 rounded-2xl ring-4 ring-background overflow-hidden" style={{ background: c.color || '#f3184c' }}>{c.imageUrl && <img src={c.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition-all duration-500" alt="" />}</div></div>
+                             <div className="flex-1 min-w-0"><p className="font-black text-base truncate tracking-tight mb-1">{c.name}</p><p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] opacity-40 group-hover:opacity-100 group-hover:text-primary transition-all">Class Access &rarr;</p></div>
+                        </div>
+                    ))}
+                    <Button variant="outline" onClick={() => setActiveTab('classes')} className="w-full h-15 rounded-[1.5rem] bg-white/[0.02] border-dashed font-black text-xs space-x-2"><span>VIEW ALL ACTIVE CLASSES</span><ArrowRight size={14} className="opacity-40" /></Button>
+                 </div>
             </div>
-            <button className="size-10 rounded-full bg-surface/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-surface/10 transition-all">
-              <ChevronRight size={20} />
-            </button>
-          </div>
-
-          {/* Background Decorative Elements */}
-          <div className="absolute top-0 right-0 size-64 bg-primary/5 rounded-full blur-[100px] -mr-32 -mt-32" />
-          <div className="absolute bottom-0 left-0 size-64 bg-primary/5 rounded-full blur-[100px] -ml-32 -mb-32" />
         </div>
-        )}
+      </motion.div>
+    );
+  }
 
-        {/* Timetable Section */}
-        <div className="bg-surface rounded-[40px] p-10 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-2 border-white/20 relative overflow-hidden">
-          <h2 className="text-3xl font-black tracking-tighter mb-10">Time<span className="text-emerald-500">table</span></h2>
-          <div className="relative">
-            {/* Time markers */}
-            <div className="flex justify-between text-[10px] font-black text-text-muted uppercase tracking-widest mb-8">
-              {['10 am', '1 pm', '2 pm', '3 pm', '4 pm', '5 pm', '6 pm'].map((time, i) => (
-                <div key={i} className="relative">
-                  <span className={cn(time === '10 am' ? "text-primary" : "")}>{time}</span>
-                  {time === '10 am' && <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 size-1.5 bg-primary rounded-full" />}
-                </div>
-              ))}
+  if (activeTab === 'explore') {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10">
+        <div><h1 className="text-4xl font-black tracking-tighter uppercase italic">Explore Classes</h1><p className="text-text-muted text-[10px] font-black uppercase tracking-[0.3em] opacity-40 mt-2">Available Institutional Access Nodes</p></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {availableModules.map((m: any) => (
+            <div key={m.id} className="glass rounded-[2.5rem] overflow-hidden border-white/5 group hover:border-primary/30 transition-all bg-[#0f0405]/20">
+              <div className="h-48 bg-[#0f0405] relative overflow-hidden"><div className="absolute inset-0 bg-gradient-to-br from-primary/15 to-transparent z-0" /><div className="absolute inset-0 flex items-center justify-center p-8 z-10 transition-transform group-hover:scale-105"><h3 className="text-2xl font-black text-center tracking-tighter uppercase leading-tight italic drop-shadow-2xl">{m.name}</h3></div><div className="absolute top-6 right-6 z-20"><span className="px-5 py-2 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-[10px] font-black uppercase tracking-widest text-primary shadow-2xl">LKR {parseFloat(m.price).toFixed(2)}</span></div></div>
+              <div className="p-8 space-y-6 relative z-10"><div className="flex items-center gap-4"><Avatar className="size-12 rounded-xl border border-white/10 ring-2 ring-primary/10"><AvatarImage src={m.users?.profilePhotoUrl} /><AvatarFallback className="bg-primary/20 text-primary font-black uppercase">{(m.users?.fullName || 'T').charAt(0)}</AvatarFallback></Avatar><div><p className="text-[9px] font-black uppercase tracking-widest text-text-muted opacity-40 mb-0.5">Faculty Expert</p><p className="font-black text-sm uppercase tracking-tight text-white/90">{m.users?.fullName}</p></div></div><p className="text-text-muted text-xs font-bold leading-relaxed line-clamp-2 opacity-60">{m.description}</p><Button onClick={() => setShowPaymentModal(m)} className="w-full h-14 rounded-2xl bg-white/[0.04] border border-white/10 hover:bg-primary transition-all text-[10px] font-black uppercase tracking-[0.4em] shadow-lg group-hover:shadow-primary/10">Request Access</Button></div>
             </div>
-            
-            {/* Grid lines */}
-            <div className="absolute top-10 left-0 right-0 h-px bg-black/5" />
-            
-            {/* Session Card */}
-            <div className="mt-10">
-              {dashboardData?.upcomingClasses?.length > 0 ? (
-                <div className="bg-sidebar rounded-[32px] p-8 flex items-center justify-between group">
-                  <div className="flex items-center gap-6">
-                    <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-                      <Video className="text-primary" size={24} />
-                    </div>
-                    <div>
-                      <h3 className="text-white font-black text-xl tracking-tight mb-1">
-                        {dashboardData.upcomingClasses[0].title}
-                      </h3>
-                      <p className="text-white/40 text-sm font-bold">
-                        {dashboardData.upcomingClasses[0].modules?.name} • Group session
-                      </p>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => startZoomMeeting(dashboardData.upcomingClasses[0])}
-                    className="bg-primary text-white px-8 py-4 rounded-2xl font-black text-sm shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
-                  >
-                    Join Now
-                  </button>
-                </div>
-              ) : (
-                <div className="bg-background rounded-[32px] p-12 text-center border-2 border-dashed border-white/5">
-                  <p className="text-text-muted font-bold">No sessions scheduled for this time.</p>
-                </div>
-              )}
-            </div>
-          </div>
+          ))}
+          {availableModules.length === 0 && <div className="col-span-full py-32 text-center opacity-40 border-2 border-dashed border-white/5 rounded-[3rem]"><Globe size={48} className="mx-auto mb-4 text-primary/20" /><p className="text-[10px] font-black uppercase tracking-[0.6em]">No regional classes discovered</p></div>}
         </div>
-      </div>
-      )}
+        <AnimatePresence>{showPaymentModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl"><motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="glass max-w-md w-full p-10 rounded-[3rem] border-white/10 text-center"><div className="size-20 rounded-2xl bg-success/10 border border-success/20 flex items-center justify-center mx-auto mb-8 text-success shadow-2xl shadow-success/10"><ShieldCheck size={32} /></div><h2 className="text-2xl font-black mb-2 uppercase tracking-tighter italic">Secure Payment Protocol</h2><p className="text-text-muted text-[10px] font-black uppercase tracking-[0.3em] opacity-40 mb-10">Institutional Verification Center</p><div className="bg-white/5 rounded-2xl p-6 mb-8 text-left border border-white/5"><div className="flex justify-between items-center mb-4"><span className="text-[10px] font-black uppercase tracking-widest text-text-muted opacity-40">System Handle</span><span className="font-bold text-white text-xs uppercase">{showPaymentModal.name}</span></div><div className="flex justify-between items-center pt-4 border-t border-white/5"><span className="text-[10px] font-black uppercase tracking-widest text-text-muted opacity-40">Access Fee</span><span className="font-black text-xl text-primary tracking-tighter italic">LKR {parseFloat(showPaymentModal.price).toFixed(2)}</span></div></div><div className="space-y-3"><Button onClick={() => handleEnroll(showPaymentModal.id)} disabled={enrolling !== null} className="w-full h-14 rounded-2xl bg-primary text-white font-black uppercase tracking-[0.4em] text-[10px] shadow-xl shadow-primary/20">{enrolling ? 'Processing Nodes...' : 'Authorize Transaction'}</Button><Button onClick={() => setShowPaymentModal(null)} variant="ghost" className="w-full h-12 rounded-2xl text-text-muted hover:text-white font-black uppercase tracking-[0.4em] text-[10px]">Cancel Protocol</Button></div></motion.div></div>
+        )}</AnimatePresence>
+      </motion.div>
+    );
+  }
 
-      {/* Right Column */}
-      {(activeTab === 'dashboard' || activeTab === 'courses') && (
-      <div className={cn("space-y-8", activeTab === 'courses' ? "col-span-12" : "col-span-12 lg:col-span-4")}>
-        {/* Enrolled Courses Section */}
-        <div className="bg-surface rounded-[40px] p-10 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-2 border-white/20">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-black tracking-tighter">My <span className="text-blue-500">Courses</span></h2>
-            <button className="text-xs text-text-muted font-black uppercase tracking-widest hover:text-primary transition-colors">View all</button>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {dashboardData?.enrolledCourses?.length > 0 ? (
-              dashboardData.enrolledCourses.map((course: any) => (
-                <div key={course.id} className="group relative bg-background rounded-[32px] p-6 border border-white/5 hover:border-primary/20 transition-all">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className={cn("size-12 rounded-2xl flex items-center justify-center text-white shadow-lg", course.color || 'bg-primary')}>
-                      <BookOpen size={20} />
-                    </div>
-                    <div className="bg-surface px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/5 shadow-sm">
-                      {course.type || 'COURSE'}
-                    </div>
-                  </div>
-                  <h3 className="text-lg font-black tracking-tight mb-2 group-hover:text-primary transition-colors">{course.name}</h3>
-                  <p className="text-xs text-text-muted font-bold line-clamp-2 mb-4">{course.description}</p>
-                  <div className="flex items-center justify-between mt-auto">
-                    <div className="flex items-center gap-2">
-                      <div className="flex -space-x-2">
-                        {[1, 2, 3].map((_, i) => (
-                          <div key={i} className="size-6 rounded-full border-2 border-white bg-gray-200 overflow-hidden">
-                            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i + course.id}`} alt="" />
-                          </div>
-                        ))}
+  if (activeTab === 'classes') {
+    if (selectedCourse) {
+      const meetings = (selectedCourse.live_classes || []).sort((a: any, b: any) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+      return (
+        <motion.div initial={{ opacity: 0, scale: 0.99 }} animate={{ opacity: 1, scale: 1 }} className="space-y-10">
+          <div className="glass border border-white/10 rounded-[3rem] p-4 md:p-12 mb-10 relative overflow-hidden bg-[#0f0405]/20">
+             <div className="absolute right-0 top-0 h-full w-2 shadow-[0_0_30px_rgba(243,24,76,0.3)] z-20" style={{ background: selectedCourse.color || '#f3184c' }} />
+             <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-10 mb-12 pb-12 border-b border-white/5 relative z-10">
+                <div className="flex items-center gap-6">
+                    <button onClick={() => setSelectedCourse(null)} className="size-14 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-primary transition-all group shrink-0"><ArrowLeft size={24} className="group-hover:-translate-x-1 transition-transform" /></button>
+                    <div className="min-w-0"><div className="flex items-center gap-3 mb-2"><div className="size-2 rounded-full shadow-[0_0_8px_#f3184c]" style={{ background: selectedCourse.color || '#f3184c' }} /><p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted opacity-40">Class ID: {selectedCourse.id.slice(0, 12)}</p></div><h2 className="text-3xl md:text-5xl font-black tracking-tighter uppercase italic truncate">{selectedCourse.name}</h2></div>
+                </div>
+                <div className="flex items-center gap-2 bg-black/40 p-1.5 rounded-2xl border border-white/5 w-fit shrink-0">
+                    {['vectors', 'hub', 'assets'].map(tab => (
+                        <button key={tab} onClick={() => setClassTab(tab as any)} className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${classTab === tab ? 'bg-primary text-white shadow-xl shadow-primary/20' : 'text-text-muted hover:text-white hover:bg-white/5'}`}>{tab === 'vectors' ? 'Live Classes' : tab === 'hub' ? 'Class Info' : 'Storage'}</button>
+                    ))}
+                </div>
+             </div>
+             <AnimatePresence mode="wait">
+                {classTab === 'vectors' && (
+                  <motion.div key="vectors" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8 relative z-10">
+                      <div className="flex items-center justify-between"><div className="flex items-center gap-3 opacity-60"><Video size={18} className="text-primary" /><h3 className="font-black text-xs uppercase tracking-[0.3em]">Institutional Directives</h3></div><div className="flex items-center gap-3 group cursor-pointer" onClick={() => setShowHistory(!showHistory)}><span className="text-[10px] font-black text-text-muted uppercase tracking-widest opacity-40 group-hover:opacity-100 transition-opacity">Archive Log</span><div className={`w-12 h-6 rounded-full relative transition-colors border ${showHistory ? 'bg-primary/20 border-primary/40' : 'bg-white/5 border-white/10'}`}><motion.div animate={{ x: showHistory ? 26 : 4 }} className={`absolute top-1 size-4 rounded-full shadow-lg ${showHistory ? 'bg-primary shadow-primary/40' : 'bg-white/20'}`} /></div></div></div>
+                      <div className="grid grid-cols-1 gap-4">
+                          {meetings.filter(m => showHistory || new Date(m.scheduledAt).getTime() > twentyFourHoursAgo.getTime()).map((m: any) => {
+                              const isLive = now >= new Date(new Date(m.scheduledAt).getTime() - 15 * 60 * 1000) && now <= new Date(new Date(m.scheduledAt).getTime() + 24 * 60 * 60 * 1000); // Available for 24h post-start
+                              const isPast = new Date(m.scheduledAt).getTime() < twentyFourHoursAgo.getTime();
+                              return (
+                                  <div key={m.id} className={`glass p-8 rounded-[2.5rem] border-white/5 flex flex-col lg:flex-row lg:items-center justify-between gap-8 hover:border-primary/20 transition-all group ${isPast ? 'opacity-40 grayscale hover:grayscale-0 hover:opacity-100' : ''}`}>
+                                      <div className="flex items-center gap-8">
+                                          <div className={`size-16 rounded-[1.5rem] flex items-center justify-center shrink-0 border border-white/5 transition-all group-hover:scale-105 ${isLive ? 'bg-primary shadow-2xl shadow-primary/30' : 'bg-white/5'}`}><Calendar size={28} className={isLive ? 'text-white' : 'text-text-muted'} /></div>
+                                          <div><p className="font-black text-xl uppercase tracking-tight mb-2 group-hover:text-primary transition-colors">{m.topic}</p><div className="flex flex-wrap items-center gap-6"><div className="flex items-center gap-2"><Clock size={14} className="text-primary opacity-60" /><span className="text-[11px] font-black text-text-muted uppercase tracking-widest italic">{new Date(m.scheduledAt).toLocaleString()}</span></div><div className="flex items-center gap-2"><Zap size={14} className="text-warning opacity-60" /><span className="text-[11px] font-black text-text-muted uppercase tracking-widest italic">{m.duration || 60} Min Node</span></div></div></div>
+                                      </div>
+                                      <div className="flex items-center gap-4 min-w-[220px]">
+                                          {isLive ? (<button onClick={() => startZoomMeeting(m)} className="w-full h-14 rounded-2xl bg-primary text-white text-[10px] font-black uppercase tracking-[0.4em] shadow-xl shadow-primary/30 hover:scale-[1.03] active:scale-95 transition-all flex items-center justify-center gap-4 animate-pulse"><PlayCircle size={20} /> Establish Vector</button>) : isPast ? (<div className="w-full h-14 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center gap-2 opacity-60"><span className="text-[10px] font-black text-text-muted uppercase tracking-[0.3em] italic">Archived Class</span></div>) : (<div className="w-full h-14 rounded-2xl bg-warning/5 border border-warning/10 flex items-center justify-center gap-3"><Clock size={16} className="text-warning animate-pulse" /><span className="text-[10px] font-black text-warning uppercase tracking-[0.3em] italic">Awaiting Sync</span></div>)}
+                                      </div>
+                                  </div>
+                              );
+                          })}
+                          {meetings.length === 0 && <div className="py-24 text-center glass rounded-[3rem] border-dashed border-white/10"><Video size={48} className="mx-auto mb-6 text-text-muted opacity-10" /><p className="text-[10px] font-black uppercase tracking-[0.6em] text-text-muted opacity-40 italic">Academic Vectors Idle</p></div>}
                       </div>
-                      <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">+12 students</span>
-                    </div>
-                    <button className="size-10 rounded-xl bg-surface border border-white/5 flex items-center justify-center text-text-muted group-hover:text-primary group-hover:border-primary/20 transition-all shadow-sm">
-                      <ArrowRight size={18} />
-                    </button>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="col-span-2 bg-background rounded-[32px] p-12 text-center border-2 border-dashed border-white/5">
-                <p className="text-text-muted font-bold">You haven't enrolled in any courses yet.</p>
-                <button className="mt-4 text-primary font-black uppercase tracking-widest text-xs hover:underline">Browse Catalog</button>
-              </div>
-            )}
+                  </motion.div>
+                )}
+                {classTab === 'hub' && (
+                  <motion.div key="hub" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-12 relative z-10 pt-4"><div className="grid grid-cols-1 lg:grid-cols-3 gap-12"><div className="lg:col-span-2 space-y-8"><div className="space-y-4"><h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary italic">Intelligence Summary</h4><p className="text-xl font-medium leading-relaxed text-white/80 tracking-tight">{selectedCourse.description}</p></div><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div className="glass p-8 rounded-[2rem] border-white/5 flex flex-col gap-4"><Award size={24} className="text-primary" /><div><p className="text-[9px] font-black text-text-muted uppercase tracking-widest opacity-40 mb-1">Certification</p><p className="text-sm font-black uppercase tracking-tight">Institutional Merit</p></div></div><div className="glass p-8 rounded-[2rem] border-white/5 flex flex-col gap-4"><Users size={24} className="text-success" /><div><p className="text-[9px] font-black text-text-muted uppercase tracking-widest opacity-40 mb-1">Scholar Density</p><p className="text-sm font-black uppercase tracking-tight">Vectored Access Active</p></div></div></div></div><div className="space-y-8"><h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary italic">Primary Facilitator</h4><div className="glass p-10 rounded-[2.5rem] border-white/10 text-center relative overflow-hidden group"><div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent z-0 opacity-0 group-hover:opacity-100 transition-opacity" /><Avatar className="size-24 rounded-[2rem] border-4 border-background/50 ring-4 ring-primary/20 mx-auto mb-6 relative z-10 shadow-2xl"><AvatarImage src={selectedCourse.teachers?.profilePhotoUrl} /><AvatarFallback className="bg-primary/20 text-primary uppercase font-black text-2xl">{(selectedCourse.teachers?.fullName || 'T').charAt(0)}</AvatarFallback></Avatar><div className="relative z-10"><p className="font-black text-xl uppercase tracking-tighter mb-1 text-white">{selectedCourse.teachers?.fullName || selectedCourse.teachers?.username}</p><p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted opacity-40 mb-6">Master Instructor</p><button className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-[0.4em] hover:bg-white/10 transition-all group-hover:bg-primary transition-all">Direct Intelligence Hub</button></div></div></div></div></motion.div>
+                )}
+                {classTab === 'assets' && (
+                  <motion.div key="assets" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="py-32 text-center glass rounded-[3.5rem] border-dashed border-white/10 opacity-60"><Package size={64} className="mx-auto mb-8 text-primary/20 animate-pulse" /><h4 className="text-2xl font-black uppercase tracking-tighter mb-2">Resource Storage Offline</h4><p className="text-[10px] font-black uppercase tracking-[0.6em] text-text-muted opacity-40 italic">Synchronizing institutional assets...</p></motion.div>
+                )}
+             </AnimatePresence>
           </div>
-        </div>
-
-        {/* Statistics Card */}
-        {activeTab === 'dashboard' && (
-        <div className="bg-surface rounded-[40px] p-10 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-2 border-white/20">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-black tracking-tighter">Statis<span className="text-primary">tics</span></h2>
-            <button className="text-xs text-text-muted font-black uppercase tracking-widest hover:text-primary transition-colors">View all</button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-sidebar rounded-[32px] p-6 text-white">
-              <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2">Today's tasks</p>
-              <p className="text-4xl font-black mb-4">5</p>
-              <button className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:text-primary transition-colors">
-                details <ArrowRight size={12} />
-              </button>
-            </div>
-            <div className="bg-background rounded-[32px] p-6">
-              <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-2">Completed Tasks</p>
-              <p className="text-4xl font-black mb-4">{dashboardData?.stats?.completedTasks || 0}</p>
-              <button className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:text-primary transition-colors">
-                view history <ArrowRight size={12} />
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-6 bg-background rounded-[32px] p-6">
-            <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-4">Task statistics</p>
-            <div className="h-20 flex items-end gap-1">
-              {[40, 70, 45, 90, 65, 80, 50].map((h, i) => (
-                <div key={i} className="flex-1 bg-primary/10 rounded-t-lg relative group">
-                  <motion.div 
-                    initial={{ height: 0 }}
-                    animate={{ height: `${h}%` }}
-                    className="absolute bottom-0 left-0 right-0 bg-primary rounded-t-lg transition-all group-hover:bg-primary/80"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        </motion.div>
+      );
+    }
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 px-2"><div><h1 className="text-4xl font-black tracking-tighter uppercase italic">My Classes</h1><p className="text-text-muted text-[10px] font-black uppercase tracking-[0.3em] opacity-40 mt-2">Active Institutional Access Tokens</p></div><div className="relative group w-full md:w-auto md:min-w-[320px]"><Search size={18} className="absolute left-6 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors" /><Input placeholder="Filter units..." value={search} onChange={e => setSearch(e.target.value)} className="h-14 pl-14 rounded-2xl bg-white/5 border-white/10 focus:border-primary/40" /></div></div>
+        {loading ? ( <div className="flex justify-center py-24"><div className="size-14 border-[3px] border-primary border-t-transparent rounded-full animate-spin shadow-[0_0_20px_rgba(243,24,76,0.3)]" /></div> ) : courses.length === 0 ? (
+          <div className="glass rounded-[3rem] py-32 text-center border-dashed border-white/10 group"><div className="size-24 rounded-3xl bg-white/[0.03] border border-white/10 flex items-center justify-center mx-auto mb-8 group-hover:scale-110 transition-all duration-500"><Package size={48} className="text-primary opacity-10 group-hover:opacity-40 transition-opacity" /></div><h2 className="text-2xl font-black tracking-tighter mb-2 uppercase italic">Registry Empty</h2><p className="text-text-muted text-[10px] max-w-sm mx-auto mb-10 font-black leading-relaxed opacity-40 uppercase tracking-widest italic">No active class protocols detected. Initialize discovery to begin.</p><Button onClick={() => setActiveTab('explore')} className="bg-primary px-10 h-14 rounded-2xl font-black uppercase tracking-[0.3em] text-[10px]">Launch Discovery Hub</Button></div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">{courses.filter(c => c.name.toLowerCase().includes(search.toLowerCase())).map((course) => ( <ClassCard key={course.id} course={course} onClick={() => { setSelectedCourse(course); setClassTab('vectors'); }} /> ))}</div>
         )}
+      </motion.div>
+    );
+  }
 
-        {/* Premium Card */}
-        {activeTab === 'dashboard' && (
-        <div className="bg-surface rounded-[40px] p-10 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-2 border-white/20 relative overflow-hidden group">
-          <div className="relative z-10">
-            <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
-              <Star className="text-primary" size={24} />
-            </div>
-            <h3 className="text-2xl font-black tracking-tighter mb-2">Premium subscription</h3>
-            <p className="text-sm font-bold text-text-muted mb-8">Buy Premium and get access to new courses</p>
-            <button className="w-full bg-sidebar text-white py-4 rounded-2xl font-black text-sm hover:bg-black transition-all">
-              Go Premium
-            </button>
-          </div>
-          <div className="absolute -right-10 -top-10 size-40 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-all" />
-        </div>
-        )}
-      </div>
-      )}
-    </motion.div>
-  );
-};
+  if (activeTab === 'settings') {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8 max-w-4xl mx-auto py-10">
+        <div className="glass p-12 rounded-[3.5rem] border-white/5 text-center relative overflow-hidden bg-[#0f0405]/40"><div className="absolute -right-20 -top-20 size-80 bg-primary/5 blur-[100px] rounded-full" /><div className="relative z-10"><div className="size-24 rounded-[2rem] bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-8 shadow-2xl"><Avatar className="size-20 rounded-2xl"><AvatarImage src={user?.profilePhotoUrl} /><AvatarFallback className="bg-primary/20 text-primary font-black text-2xl uppercase">{(user?.fullName || 'S').charAt(0)}</AvatarFallback></Avatar></div><h2 className="text-3xl font-black mb-3 uppercase tracking-tighter text-white">Learner Hub Identity</h2><p className="text-text-muted text-[11px] font-black uppercase tracking-[0.3em] opacity-40 mb-10">Verified Institutional Access Verification Profile</p><div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left"><div className="p-8 rounded-[2rem] bg-white/[0.03] border border-white/10 hover:border-primary/30 transition-all group"><p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3 opacity-40 group-hover:text-primary transition-colors">Digital Handle</p><p className="font-black text-xl text-white tracking-widest uppercase truncate">{user?.username}</p></div><div className="p-8 rounded-[2rem] bg-white/[0.03] border border-white/10 hover:border-primary/30 transition-all group"><p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3 opacity-40 group-hover:text-primary transition-colors">Assigned Protocol</p><p className="font-black text-xl text-primary tracking-widest uppercase">Verified Student Agent</p></div></div><div className="mt-6 p-8 rounded-[2rem] bg-white/[0.02] border border-white/5 text-left flex items-center justify-between group"><div><p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1 opacity-40">Registered Email</p><p className="font-bold text-white/80">{user?.email}</p></div><Button variant="outline" className="rounded-xl border-white/10 h-10 text-[10px] font-black uppercase tracking-widest opacity-60 hover:opacity-100">Request Change</Button></div></div></div>
+      </motion.div>
+    );
+  }
 
-export default StudentDashboard;
+  return null;
+}

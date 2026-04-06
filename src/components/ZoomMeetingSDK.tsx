@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { ZoomMtg } from '@zoom/meetingsdk';
 
-// Mandatory CSS for version 5.1.4+
-import '@zoom/meetingsdk/dist/ui/zoom-meetingsdk.css';
+// Mandatory CSS for version 5.1.4+ moved to dynamic loading below
 
 // SDK requires globals in bundler environments
 (window as any).React = React;
@@ -36,6 +35,37 @@ const ZoomMeetingSDK: React.FC<ZoomMeetingSDKProps> = ({
   const [status, setStatus] = useState<string>("Initializing Client...");
 
   useEffect(() => {
+    // Dynamically load Zoom SDK CSS to prevent global pollution
+    const link = document.createElement('link');
+    link.id = 'zoom-sdk-css';
+    link.rel = 'stylesheet';
+    link.href = 'https://source.zoom.us/5.1.4/css/bootstrap.css'; // Alternative: load from the package if possible, but CDN is safer for dynamic injection without bundler issues
+    
+    // We can also try to link to the local node_modules version if we can determine the path, 
+    // but the Zoom documentation specifies these CDN links for simple dynamic loading.
+    // However, the original import was '@zoom/meetingsdk/dist/ui/zoom-meetingsdk.css'.
+    // Let's stick as close as possible to the original but via dynamic injection.
+    
+    const localLink = document.createElement('link');
+    localLink.id = 'zoom-ui-css';
+    localLink.rel = 'stylesheet';
+    localLink.href = 'https://source.zoom.us/5.1.4/css/react-select.css'; // Just in case
+    
+    // Actually, let's use the exact one that was being imported
+    // Since this is a Vite project, we might need a public URL or CDN.
+    // For now, I'll use the Zoom CDN which matches the version installed.
+    const zoomCss = document.createElement('link');
+    zoomCss.id = 'zoom-meetingsdk-css';
+    zoomCss.rel = 'stylesheet';
+    zoomCss.href = 'https://source.zoom.us/5.1.4/css/bootstrap.css';
+    document.head.appendChild(zoomCss);
+
+    const zoomUiCss = document.createElement('link');
+    zoomUiCss.id = 'zoom-ui-standard-css';
+    zoomUiCss.rel = 'stylesheet';
+    zoomUiCss.href = 'https://source.zoom.us/5.1.4/css/all.css';
+    document.head.appendChild(zoomUiCss);
+
     let isMounted = true;
     
     // Hide standard React root to prevent overlap
@@ -113,6 +143,12 @@ const ZoomMeetingSDK: React.FC<ZoomMeetingSDKProps> = ({
       clearTimeout(timer);
       if (rootEl) rootEl.style.display = 'block';
       if (zoomEl) zoomEl.style.display = 'none';
+      
+      // Cleanup dynamically injected CSS
+      zoomCss.remove();
+      zoomUiCss.remove();
+      link.remove();
+      localLink.remove();
     };
   }, [meetingNumber, passWord, userName, userEmail, signature, sdkKey]);
 

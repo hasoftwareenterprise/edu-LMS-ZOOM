@@ -27,6 +27,7 @@ model live_classes {
   id            String              @id
   moduleId      String
   title         String
+  topic         String?
   scheduledAt   DateTime
   duration      Int
   status        live_classes_status @default(SCHEDULED)
@@ -43,23 +44,25 @@ model live_classes {
 }
 
 model modules {
-  id           String         @id
-  name         String
-  description  String         @db.Text
-  price        Decimal        @db.Decimal(10, 2)
-  imageUrl     String?
-  color        String?        @default("#f3184c")
-  type         String         @default("COURSE") // COURSE or CLASS
-  startDate    DateTime
-  startTime    String
-  endTime      String
-  isActive     Boolean        @default(true)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime
-  teacherId    String?
-  enrollments  enrollments[]
-  live_classes live_classes[]
-  users        users?         @relation(fields: [teacherId], references: [id])
+  id                    String         @id
+  name                  String
+  description           String         @db.Text
+  price                 Decimal        @db.Decimal(10, 2)
+  imageUrl              String?
+  color                 String?        @default("#f3184c")
+  type                  String         @default("COURSE")
+  startDate             DateTime
+  startTime             String
+  endTime               String
+  isActive              Boolean        @default(true)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime
+  teacherId             String?
+  googleDriveFolderName String?
+  googleDriveFolderUrl  String?
+  enrollments           enrollments[]
+  live_classes          live_classes[]
+  users                 users?         @relation(fields: [teacherId], references: [id])
 
   @@index([teacherId], map: "modules_teacherId_fkey")
 }
@@ -102,15 +105,47 @@ model sessions {
 }
 
 model users {
-  id          String        @id
-  email       String        @unique
-  username    String        @unique
-  password    String
-  role        users_role    @default(STUDENT)
-  isVerified  Boolean       @default(false)
-  isActive    Boolean       @default(true)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime
+  id             String                  @id
+  email          String                  @unique
+  username       String                  @unique
+  password       String
+  role           users_role              @default(STUDENT)
+  approvalStatus teacher_approval_status @default(APPROVED)
+  isVerified     Boolean                 @default(false)
+  isActive       Boolean                 @default(true)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime
+
+  // Common profile fields
+  fullName        String?
+  mobileNumber    String?
+  whatsappNumber  String?
+  profilePhotoUrl String?
+
+  // Teacher-specific fields
+  nicNumber              String?
+  educationQualifications String? @db.Text
+  instituteName          String?
+  businessRegNo          String?
+  subjectSpecialization  String? @db.Text
+  shortBio               String? @db.Text
+
+  // Teacher Zoom credentials (stored, not used for signing yet)
+  zoomSdkKey       String?
+  zoomSdkSecret    String?
+  zoomAccountId    String?
+  zoomClientId     String?
+  zoomClientSecret String?
+
+  // Teacher Google credentials (stored for future use)
+  googleClientId     String?
+  googleClientSecret String?
+
+  // Student-specific fields
+  school      String?
+  dateOfBirth DateTime?
+  gradeYear   String?
+
   enrollments enrollments[]
   modules     modules[]
   otps        otps[]
@@ -134,4 +169,10 @@ enum live_classes_status {
   LIVE
   COMPLETED
   CANCELLED
+}
+
+enum teacher_approval_status {
+  PENDING
+  APPROVED
+  SUSPENDED
 }

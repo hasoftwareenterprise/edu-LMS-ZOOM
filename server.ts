@@ -6,9 +6,10 @@ import jwt from "jsonwebtoken";
 import { v4 as uuidv4 } from "uuid";
 import KJUR from "jsrsasign";
 import dotenv from "dotenv";
-import { PrismaClient, users_role } from "@prisma/client";
+import { PrismaClient, users_role, teacher_approval_status } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import axios from "axios";
+import { google } from "googleapis";
 
 dotenv.config();
 
@@ -16,23 +17,57 @@ const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3002;
 const prisma = new PrismaClient();
 
-// Bootstrap test users
+// ── Google Drive Service Account ──
+const GOOGLE_SERVICE_ACCOUNT = {
+  type: "service_account",
+  project_id: "edulms-lms-drive-manager",
+  private_key_id: "6e6d69ac4980c20d2a0b573b11dbc6162631c887",
+  private_key: "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCnoZA0eUIrtOrC\nKWpT2rlrzMkHBvzX3CrFyBCAL79p0Szc7zOiwZvAvV14p+vo8HqUL7Z47YsC0jb0\nM1zStkdP0Uze1r4jcirJEiGFyXgnHl5uPdBJ7VP+cqUhCb48cWp/E0ZGtKVckkie\naaREdDwOiNj3TT9Q36PXB4HRWMSkBbs4u3fm5TQZmhq4/9iKjWLGqmTbWVc7Eyf4\nzs1nKLLrKcm60psVB3abUmjnJS8jXBnSll/Ny1B9uLBvKuQBbArKy1plZ2TXTXS6\nd5O9q6iaGEdEMAs5E88iukYFFgvwVhKHUG1oyivY8ARnhZeZ02EvYNsFvQU0FbOQ\n8jLQEwqDAgMBAAECggEARrH9dhPZk0M2anI69GhfIJZ6rEGQJHqBkuqcbPjkscBb\nCYUu8xFnkHHHTxbCuWGmj2DqKNNTc3KNOjriKJqiMfSilxPi7tECG/C0bJKqvuQ1\noOmE1K4pWJUSCNFarUX9VgUKvscBP2DVLrxF+yiSv6dajKlioTsFsoCHvIhh8aRI\nJaRuJ7m3PGnbr+zNXLbQKHjILXAe9cY7EFkiuaRLqPUMxFOz/oG1w25bJPd5MuR2\n0/sH7q3KDPLnnIPv4+Y3PRm0G3o0w7mDzYGzVA08tI3Y1mXjl8mXFSN0Zq7gvx7x\nkOWC6kMKZ7tLnqE1y9wdAJY1VQCMExXoI0TaTtrmgQKBgQDZ1gR/kEjQfZ77cV5U\nC2YTt3cqPE+xNiC5SFN+hGJaE9Ld39S6OvFYRkfrxMnX0YsFjdSwHB7BOKNFnFnD\niMj2SqRBjJD1b5DFR1PcYsPJfj5WlBN0i2ue3OqxFm5UtCHPMpYsaJnRe/FsKqUc\nqN8V9gK1QV9dQP8HT5ZbqTYqfQKBgQDFzVhqf6cJ0zT5sRf1oUr8jj9ZL/lI4PoC\nA+8ldaP3lgI/pZBiIh4G3CajnrCKR2sQfeTIAWYNqn6Qm6i8Ey8H5XoFE3B/YBl0\nf01CaXiXKjEWH5mC0pRn7hPBkf5NHW+Y5Wa6K3D7H0E4u/2D7r7fzW3d3VzqxYI4\nbpS7eDJkqQKBgCqQMY6Ct+GU8z2PU4oZXkD3hR3H+fHIHEgMlsEtVfWY6DVo3f6z\nAJxrVGJCNsw7BvYf2PMVlp3C+OAVUNbx9Ec2CHc7I7yByHm0j+34HyYEtEBxiJaE\nbmXmFrscW2bU/I0C6F7pZHkZ9O1YlNJ+TRmfqE2tXiH5e9nzVt3E9b8RAoGASBfx\nL/u9+xbOVjRqBdW3b3pWDHXV+KFjFKxBhvJdF9s3D9hUMzxYMtP0hwz3yJp9Mb7m\nvB6ADJt5+d4+K46hEG4kHF1n7+lWJnITJHXfNK3gn/FHl/RX2mhvMV/VFDWPuYM/\nBilKPGt6B+1aqFQs4DYp5RbT7oWHfPHzUU4hxqkCgYEAzG36kWM6FZ59Y4TDiN0L\nJkRlN4UCyOxlLIc2gCU2NXTd5TfBFHoJY4Q3F7E1RmEGHa9p9CeOYX+t5GsLRGFT\n0YGzK+6AwJ7i8a/3GS+mq+aPJq/x5YWLX8gA7B3r5V8lX5E4c2LyV0J9b8D3YL7k\nR5b8s3WgWW4HE34+L5B4y/U=\n-----END PRIVATE KEY-----\n",
+  client_email: "drive-manager@edulms-lms-drive-manager.iam.gserviceaccount.com",
+  client_id: "123456789",
+  auth_uri: "https://accounts.google.com/o/oauth2/auth",
+  token_uri: "https://oauth2.googleapis.com/token",
+};
+
+async function createDriveFolder(folderName: string): Promise<{ folderId: string; folderUrl: string } | null> {
+  try {
+    const auth = new google.auth.GoogleAuth({
+      credentials: GOOGLE_SERVICE_ACCOUNT,
+      scopes: ["https://www.googleapis.com/auth/drive"],
+    });
+    const drive = google.drive({ version: "v3", auth });
+    const response = await drive.files.create({
+      requestBody: {
+        name: folderName,
+        mimeType: "application/vnd.google-apps.folder",
+      },
+      fields: "id",
+    });
+    const folderId = response.data.id!;
+    // Make folder accessible to anyone with link
+    await drive.permissions.create({
+      fileId: folderId,
+      requestBody: { role: "reader", type: "anyone" },
+    });
+    return { folderId, folderUrl: `https://drive.google.com/drive/folders/${folderId}` };
+  } catch (error: any) {
+    console.error("Google Drive folder creation failed:", error.message);
+    return null;
+  }
+}
+
+// Bootstrap default users (admin, sample teacher, sample student)
 async function bootstrapUsers() {
   const testUsers = [
-    { email: "admin@mail.com", username: "admin", password: "password123", role: users_role.ADMIN },
-    { email: "teacher1@mail.com", username: "teacher1", password: "password123", role: users_role.TEACHER },
-    { email: "student1@mail.com", username: "student1", password: "password123", role: users_role.STUDENT },
+    { email: "admin@mail.com", username: "admin", password: "admin@123", role: users_role.ADMIN, fullName: "System Admin", approvalStatus: teacher_approval_status.APPROVED },
+    { email: "teacher1@mail.com", username: "teacher1", password: "password123", role: users_role.TEACHER, fullName: "John Teacher", approvalStatus: teacher_approval_status.APPROVED },
+    { email: "student1@mail.com", username: "student1", password: "password123", role: users_role.STUDENT, fullName: "Jane Student", approvalStatus: teacher_approval_status.APPROVED },
   ];
 
   for (const user of testUsers) {
     try {
       const existing = await prisma.users.findFirst({
-        where: {
-          OR: [
-            { email: user.email },
-            { username: user.username }
-          ]
-        }
+        where: { OR: [{ email: user.email }, { username: user.username }] }
       });
       const hashedPassword = await bcrypt.hash(user.password, 10);
 
@@ -44,57 +79,53 @@ async function bootstrapUsers() {
             username: user.username,
             password: hashedPassword,
             role: user.role,
+            approvalStatus: user.approvalStatus,
+            fullName: user.fullName,
             isVerified: true,
             updatedAt: new Date(),
-          },
+          } as any,
         });
         console.log(`Bootstrapped user: ${user.email}`);
 
-        // Add sample data for teacher1
         if (user.username === "teacher1") {
           const courseId = uuidv4();
           await prisma.modules.create({
             data: {
               id: courseId,
-              name: "A/L Combine Maths",
-              description: "Advanced Level Combined Mathematics for students.",
+              name: "A/L Combined Mathematics",
+              description: "Advanced Level Combined Mathematics covering Calculus, Algebra, and Statistics.",
               price: 50.0,
-              color: "#3b82f6",
+              color: "#f3184c",
               type: "COURSE",
               teacherId: newUser.id,
               startDate: new Date(),
               startTime: "10:00",
               endTime: "12:00",
               updatedAt: new Date()
-            }
+            } as any
           });
-
           await prisma.live_classes.create({
             data: {
               id: uuidv4(),
               title: "Introduction to Calculus",
               moduleId: courseId,
-              scheduledAt: new Date(Date.now() + 3600000), // 1 hour from now
+              scheduledAt: new Date(Date.now() + 3600000),
               duration: 60,
               zoomMeetingId: "1234567890",
               zoomPassword: "zoompassword",
               updatedAt: new Date()
-            }
+            } as any
           });
         }
       } else {
-        // Ensure password is correct even if user existed with old password
         await prisma.users.update({
           where: { id: existing.id },
-          data: {
-            password: hashedPassword,
-            role: user.role // Ensure role is correct too
-          }
+          data: { password: hashedPassword, role: user.role, approvalStatus: user.approvalStatus } as any
         });
       }
     } catch (err: any) {
       if (err.code === 'P2002') {
-        console.log(`Bootstrap: User ${user.email} or ${user.username} already exists (Unique constraint conflict), skipping.`);
+        console.log(`Bootstrap: ${user.email} already exists, skipping.`);
       } else {
         console.error(`Bootstrap error for ${user.email}:`, err);
       }
@@ -144,33 +175,70 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// Auth: Signup
+// Auth: Signup (Extended for Teacher/Student roles)
 app.post("/api/auth/signup", async (req, res) => {
-  const { email, username, password, role } = req.body;
+  const {
+    email, username, password, role,
+    // Common
+    fullName, mobileNumber, whatsappNumber, profilePhotoUrl,
+    // Teacher-specific
+    nicNumber, educationQualifications, instituteName, businessRegNo,
+    subjectSpecialization, shortBio,
+    zoomSdkKey, zoomSdkSecret, zoomAccountId, zoomClientId, zoomClientSecret,
+    googleClientId, googleClientSecret,
+    // Student-specific
+    school, dateOfBirth, gradeYear
+  } = req.body;
 
   try {
-    // Only allow STUDENT signup publicly, or TEACHER if specified (for testing)
     const signupRole = role === "TEACHER" ? users_role.TEACHER : users_role.STUDENT;
+    // Teachers need admin approval; students are auto-approved
+    const approvalStatus = signupRole === users_role.TEACHER
+      ? teacher_approval_status.PENDING
+      : teacher_approval_status.APPROVED;
 
-    // Check if user exists
     const existing = await prisma.users.findFirst({
       where: { OR: [{ email }, { username }] }
     });
 
     if (existing) {
-      return res.status(400).json({ message: "User already exists" });
+      return res.status(400).json({ message: "Email or username already in use" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+
     try {
-      await prisma.users.create({
+      await (prisma.users as any).create({
         data: {
           id: uuidv4(),
           email,
           username,
           password: hashedPassword,
           role: signupRole,
+          approvalStatus,
           isVerified: true,
+          fullName: fullName || null,
+          mobileNumber: mobileNumber || null,
+          whatsappNumber: whatsappNumber || null,
+          profilePhotoUrl: profilePhotoUrl || null,
+          // Teacher fields
+          nicNumber: nicNumber || null,
+          educationQualifications: educationQualifications || null,
+          instituteName: instituteName || null,
+          businessRegNo: businessRegNo || null,
+          subjectSpecialization: subjectSpecialization || null,
+          shortBio: shortBio || null,
+          zoomSdkKey: zoomSdkKey || null,
+          zoomSdkSecret: zoomSdkSecret || null,
+          zoomAccountId: zoomAccountId || null,
+          zoomClientId: zoomClientId || null,
+          zoomClientSecret: zoomClientSecret || null,
+          googleClientId: googleClientId || null,
+          googleClientSecret: googleClientSecret || null,
+          // Student fields
+          school: school || null,
+          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+          gradeYear: gradeYear || null,
           updatedAt: new Date(),
         },
       });
@@ -178,31 +246,31 @@ app.post("/api/auth/signup", async (req, res) => {
       if (createError.code === 'P2002') {
         const target = createError.meta?.target;
         const targetStr = Array.isArray(target) ? target.join(',') : String(target || '');
-        if (targetStr.includes('email')) {
-          return res.status(400).json({ message: "Email already in use" });
-        }
-        if (targetStr.includes('username')) {
-          return res.status(400).json({ message: "Username already in use" });
-        }
-        return res.status(400).json({ message: "User already exists (Unique constraint violation)" });
+        if (targetStr.includes('email')) return res.status(400).json({ message: "Email already in use" });
+        if (targetStr.includes('username')) return res.status(400).json({ message: "Username already in use" });
+        return res.status(400).json({ message: "User already exists" });
       }
-      throw createError; // Re-throw if not a unique constraint error
+      throw createError;
     }
 
-    res.status(201).json({ message: "User created successfully" });
+    res.status(201).json({
+      message: "Account created successfully",
+      requiresApproval: signupRole === users_role.TEACHER
+    });
   } catch (error) {
     console.error("Signup error:", error);
     res.status(500).json({ message: "Signup failed" });
   }
 });
 
+
 // Auth: Login
 app.post("/api/auth/login", async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const user = await prisma.users.findUnique({
-      where: { email },
+    const user = await prisma.users.findFirst({
+      where: { OR: [{ email }, { username: email }] },
       include: { sessions: true }
     });
 
@@ -438,7 +506,7 @@ app.get("/api/dashboard", verifySession, async (req: any, res) => {
 
 // Courses: Create
 app.post("/api/courses", verifySession, async (req: any, res) => {
-  const { name, description, imageUrl, price, startDate, startTime, endTime, type, color } = req.body;
+  const { name, description, imageUrl, price, startDate, startTime, endTime, type, color, googleDriveFolderName } = req.body;
   const userId = req.user.userId;
 
   if (req.user.role !== users_role.TEACHER && req.user.role !== users_role.ADMIN) {
@@ -450,6 +518,18 @@ app.post("/api/courses", verifySession, async (req: any, res) => {
   }
 
   try {
+    // Auto-create Google Drive folder if a name is provided
+    let driveFolderUrl: string | null = null;
+    let driveStoredName = googleDriveFolderName || null;
+    if (googleDriveFolderName) {
+      const driveResult = await createDriveFolder(googleDriveFolderName);
+      if (driveResult) {
+        driveFolderUrl = driveResult.folderUrl;
+        driveStoredName = googleDriveFolderName; // keep the name, store URL as the drive link
+        console.log(`Drive folder created: ${driveResult.folderUrl}`);
+      }
+    }
+
     const course = await prisma.modules.create({
       data: {
         id: uuidv4(),
@@ -463,10 +543,12 @@ app.post("/api/courses", verifySession, async (req: any, res) => {
         startTime: startTime || "09:00",
         endTime: endTime || "10:00",
         teacherId: userId,
+        googleDriveFolderName: driveStoredName,
+        googleDriveFolderUrl: driveFolderUrl,
         updatedAt: new Date()
       } as any
     });
-    res.status(201).json(course);
+    res.status(201).json({ ...course, googleDriveFolderUrl: driveFolderUrl });
   } catch (error) {
     console.error("Course creation error:", error);
     res.status(500).json({ message: "Failed to create course" });
@@ -711,7 +793,311 @@ app.post("/api/zoom/signature", verifySession, (req, res) => {
   });
 });
 
+// --- Admin APIs ---
+
+// Admin: Full statistics
+app.get("/api/admin/stats", verifySession, async (req: any, res) => {
+  if (req.user.role !== users_role.ADMIN) return res.status(403).json({ message: "Forbidden" });
+  try {
+    const [totalStudents, approvedTeachers, pendingTeachers, activeModules, totalEnrollments] = await Promise.all([
+      (prisma.users as any).count({ where: { role: users_role.STUDENT, isActive: true } }),
+      (prisma.users as any).count({ where: { role: users_role.TEACHER, approvalStatus: "APPROVED" } }),
+      (prisma.users as any).count({ where: { role: users_role.TEACHER, approvalStatus: "PENDING" } }),
+      prisma.modules.count({ where: { isActive: true } }),
+      prisma.enrollments.count({ where: { status: "PAID" } }),
+    ]);
+    const revenueData = await prisma.enrollments.findMany({ where: { status: "PAID" }, select: { amount: true } });
+    const totalRevenue = revenueData.reduce((sum, e) => sum + Number(e.amount), 0);
+    res.json({ totalStudents, approvedTeachers, pendingTeachers, activeModules, totalEnrollments, totalRevenue });
+  } catch (err) { console.error("Admin stats error:", err); res.status(500).json({ message: "Error fetching stats" }); }
+});
+
+// Admin: Get all teachers
+app.get("/api/admin/teachers", verifySession, async (req: any, res) => {
+  if (req.user.role !== users_role.ADMIN) return res.status(403).json({ message: "Forbidden" });
+  try {
+    const teachers = await (prisma.users as any).findMany({
+      where: { role: users_role.TEACHER },
+      select: {
+        id: true, email: true, username: true, fullName: true, mobileNumber: true,
+        approvalStatus: true, isActive: true, createdAt: true, instituteName: true,
+        subjectSpecialization: true, profilePhotoUrl: true, nicNumber: true,
+        educationQualifications: true, shortBio: true,
+        modules: { select: { id: true, name: true, price: true, enrollments: { select: { amount: true, status: true } } } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(teachers);
+  } catch (err) { console.error("Admin teachers error:", err); res.status(500).json({ message: "Error fetching teachers" }); }
+});
+
+// Admin: Approve teacher
+app.put("/api/admin/teachers/:id/approve", verifySession, async (req: any, res) => {
+  if (req.user.role !== users_role.ADMIN) return res.status(403).json({ message: "Forbidden" });
+  try {
+    await (prisma.users as any).update({ where: { id: req.params.id }, data: { approvalStatus: "APPROVED" } });
+    res.json({ message: "Teacher approved" });
+  } catch (err) { res.status(500).json({ message: "Error approving teacher" }); }
+});
+
+// Admin: Suspend teacher
+app.put("/api/admin/teachers/:id/suspend", verifySession, async (req: any, res) => {
+  if (req.user.role !== users_role.ADMIN) return res.status(403).json({ message: "Forbidden" });
+  try {
+    await (prisma.users as any).update({ where: { id: req.params.id }, data: { approvalStatus: "SUSPENDED" } });
+    res.json({ message: "Teacher suspended" });
+  } catch (err) { res.status(500).json({ message: "Error suspending teacher" }); }
+});
+
+// Admin: Get all students
+app.get("/api/admin/students", verifySession, async (req: any, res) => {
+  if (req.user.role !== users_role.ADMIN) return res.status(403).json({ message: "Forbidden" });
+  try {
+    const students = await (prisma.users as any).findMany({
+      where: { role: users_role.STUDENT },
+      select: {
+        id: true, email: true, username: true, fullName: true, mobileNumber: true,
+        isActive: true, createdAt: true, school: true, gradeYear: true, profilePhotoUrl: true,
+        enrollments: { select: { id: true, status: true, amount: true, modules: { select: { name: true } } } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(students);
+  } catch (err) { console.error("Admin students error:", err); res.status(500).json({ message: "Error fetching students" }); }
+});
+
+// Admin: Toggle user active status
+app.put("/api/admin/users/:id/toggle", verifySession, async (req: any, res) => {
+  if (req.user.role !== users_role.ADMIN) return res.status(403).json({ message: "Forbidden" });
+  try {
+    const user = await prisma.users.findUnique({ where: { id: req.params.id } });
+    if (!user) return res.status(404).json({ message: "User not found" });
+    await prisma.users.update({ where: { id: req.params.id }, data: { isActive: !user.isActive } });
+    res.json({ message: "User status updated", isActive: !user.isActive });
+  } catch (err) { res.status(500).json({ message: "Error toggling user" }); }
+});
+
+// Admin: Delete user
+app.delete("/api/admin/users/:id", verifySession, async (req: any, res) => {
+  if (req.user.role !== users_role.ADMIN) return res.status(403).json({ message: "Forbidden" });
+  try {
+    await prisma.users.delete({ where: { id: req.params.id } });
+    res.json({ message: "User deleted" });
+  } catch (err) { res.status(500).json({ message: "Error deleting user" }); }
+});
+
+// Admin: Get all courses (with teacher and enrollment info)
+app.get("/api/admin/courses", verifySession, async (req: any, res) => {
+  if (req.user.role !== users_role.ADMIN) return res.status(403).json({ message: "Forbidden" });
+  try {
+    const courses = await prisma.modules.findMany({
+      include: {
+        users: { select: { id: true, fullName: true, email: true, username: true } as any },
+        enrollments: { select: { id: true, status: true, amount: true } },
+        live_classes: { select: { id: true, title: true, scheduledAt: true, status: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(courses);
+  } catch (err) { res.status(500).json({ message: "Error fetching courses" }); }
+});
+
+// Admin: Get purchase logs
+app.get("/api/admin/purchases", verifySession, async (req: any, res) => {
+  if (req.user.role !== users_role.ADMIN) return res.status(403).json({ message: "Forbidden" });
+  try {
+    const purchases = await prisma.enrollments.findMany({
+      where: { status: "PAID" },
+      include: {
+        users: { select: { id: true, email: true, fullName: true, username: true } as any },
+        modules: {
+          select: { id: true, name: true, price: true,
+            users: { select: { id: true, fullName: true, email: true } as any }
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(purchases);
+  } catch (err) { res.status(500).json({ message: "Error fetching purchases" }); }
+});
+
+// --- Student APIs ---
+
+// Student: Browse available (active) courses
+app.get("/api/courses/available", verifySession, async (req: any, res) => {
+  try {
+    const courses = await prisma.modules.findMany({
+      where: { isActive: true },
+      include: {
+        users: { select: { id: true, fullName: true, username: true, profilePhotoUrl: true } as any },
+        enrollments: { select: { id: true, status: true, userId: true } },
+        live_classes: { select: { id: true, scheduledAt: true, status: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(courses);
+  } catch (err) { res.status(500).json({ message: "Error fetching courses" }); }
+});
+
+// Student: Enroll in course (dummy payment - always succeeds)
+app.post("/api/enrollments", verifySession, async (req: any, res) => {
+  const { moduleId } = req.body;
+  const userId = req.user.userId;
+  try {
+    const course = await prisma.modules.findUnique({ where: { id: moduleId } });
+    if (!course) return res.status(404).json({ message: "Course not found" });
+
+    const existing = await prisma.enrollments.findUnique({ where: { userId_moduleId: { userId, moduleId } } });
+    if (existing) return res.status(400).json({ message: "Already enrolled" });
+
+    const enrollment = await prisma.enrollments.create({
+      data: {
+        id: uuidv4(),
+        userId,
+        moduleId,
+        status: "PAID",
+        amount: course.price,
+        paidAt: new Date(),
+        updatedAt: new Date()
+      } as any
+    });
+    res.status(201).json({ message: "Enrolled successfully", enrollment });
+  } catch (err) { console.error("Enrollment error:", err); res.status(500).json({ message: "Enrollment failed" }); }
+});
+
+// Student: Get enrolled courses with meetings
+app.get("/api/student/my-courses", verifySession, async (req: any, res) => {
+  const userId = req.user.userId;
+  try {
+    const enrollments = await prisma.enrollments.findMany({
+      where: { userId, status: "PAID" },
+      include: {
+        modules: {
+          include: {
+            users: { select: { id: true, fullName: true, username: true } as any },
+            live_classes: { orderBy: { scheduledAt: 'asc' } }
+          }
+        }
+      }
+    });
+    res.json(enrollments.map(e => e.modules));
+  } catch (err) { res.status(500).json({ message: "Error fetching courses" }); }
+});
+
+// --- Teacher APIs ---
+
+// Student: Get available modules (not enrolled)
+app.get("/api/student/available-modules", verifySession, async (req: any, res) => {
+  if (req.user.role !== users_role.STUDENT) return res.status(403).json({ message: "Forbidden" });
+  try {
+    const enrolledIds = (await prisma.enrollments.findMany({
+      where: { userId: req.user.userId },
+      select: { moduleId: true }
+    })).map(e => e.moduleId);
+
+    const modules = await prisma.modules.findMany({
+      where: { 
+        isActive: true,
+        ...(enrolledIds.length > 0 ? { id: { notIn: enrolledIds } } : {})
+      },
+      include: {
+        users: {
+          select: { fullName: true, profilePhotoUrl: true, subjectSpecialization: true }
+        }
+      }
+    });
+    res.json(modules);
+  } catch (err) { res.status(500).json({ message: "Error fetching available hubs" }); }
+});
+
+// Student: Enroll in a module (Mock Payment)
+app.post("/api/student/enroll", verifySession, async (req: any, res) => {
+  if (req.user.role !== users_role.STUDENT) return res.status(403).json({ message: "Forbidden" });
+  const { moduleId } = req.body;
+  try {
+    const module = await prisma.modules.findUnique({ where: { id: moduleId } });
+    if (!module) return res.status(404).json({ message: "Hub not found" });
+
+    const enrollment = await prisma.enrollments.create({
+      data: {
+        id: uuidv4(),
+        userId: req.user.userId,
+        moduleId: moduleId,
+        status: "PAID",
+        paidAt: new Date(),
+        amount: module.price,
+        updatedAt: new Date()
+      }
+    });
+
+    res.json({ message: "Enrolled successfully", enrollment });
+  } catch (err) { res.status(500).json({ message: "Enrollment failed" }); }
+});
+
+// Teacher: Get all students from teacher's courses
+app.get("/api/teacher/students", verifySession, async (req: any, res) => {
+  if (req.user.role !== users_role.TEACHER) return res.status(403).json({ message: "Forbidden" });
+  const userId = req.user.userId;
+  const { moduleId } = req.query;
+  try {
+    const where: any = {
+      modules: { teacherId: userId },
+      status: "PAID"
+    };
+    if (moduleId) where.moduleId = moduleId;
+
+    const enrollments = await prisma.enrollments.findMany({
+      where,
+      include: {
+        users: { select: { id: true, email: true, fullName: true, username: true, isActive: true, profilePhotoUrl: true } as any },
+        modules: { select: { id: true, name: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(enrollments);
+  } catch (err) { res.status(500).json({ message: "Error fetching students" }); }
+});
+
+// Teacher: Get their courses with full meeting and enrollment details
+app.get("/api/teacher/courses", verifySession, async (req: any, res) => {
+  if (req.user.role !== users_role.TEACHER) return res.status(403).json({ message: "Forbidden" });
+  try {
+    const courses = await prisma.modules.findMany({
+      where: { teacherId: req.user.userId },
+      include: {
+        enrollments: { select: { id: true, status: true, amount: true, userId: true } },
+        live_classes: { orderBy: { scheduledAt: 'asc' } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(courses);
+  } catch (err) { res.status(500).json({ message: "Error fetching courses" }); }
+});
+
+// User: Update own profile
+app.put("/api/auth/profile", verifySession, async (req: any, res) => {
+  const userId = req.user.userId;
+  const { fullName, mobileNumber, whatsappNumber, profilePhotoUrl, shortBio } = req.body;
+  try {
+    const updated = await (prisma.users as any).update({
+      where: { id: userId },
+      data: {
+        fullName: fullName || undefined,
+        mobileNumber: mobileNumber || undefined,
+        whatsappNumber: whatsappNumber || undefined,
+        profilePhotoUrl: profilePhotoUrl || undefined,
+        shortBio: shortBio || undefined,
+        updatedAt: new Date()
+      }
+    });
+    const { password: _, ...safeUser } = updated;
+    res.json(safeUser);
+  } catch (err) { res.status(500).json({ message: "Error updating profile" }); }
+});
+
 // --- Vite Integration ---
+
 
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {

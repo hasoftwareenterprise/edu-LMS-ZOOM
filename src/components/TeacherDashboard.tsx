@@ -1,1020 +1,842 @@
-import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Users, 
-  Video, 
-  BookOpen, 
-  Plus, 
-  MoreVertical, 
-  Clock, 
-  Calendar,
-  ArrowRight,
-  Settings,
-  Search,
-  X,
-  Image as ImageIcon,
-  TrendingUp,
-  MessageSquare
-} from "lucide-react";
-import { cn } from "@/src/lib/utils";
-import axios from "axios";
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
+import {
+  BookOpen, Users, DollarSign, Video, Plus, Pencil, Trash2,
+  ChevronRight, ChevronDown, Search, X, Calendar, Clock,
+  RefreshCw, Eye, ArrowLeft, Camera, Verified, ShieldCheck, Zap,
+  AlertCircle, GraduationCap, ArrowRight, UserCheck, PlusCircle
+} from 'lucide-react';
+import { Button } from './ui/interfaces-button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import GradientButton from './ui/button-1';
 
 interface TeacherDashboardProps {
   user: any;
   dashboardData: any;
   startZoomMeeting: (meeting: any) => void;
-  activeTab?: string;
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+  token: string | null;
 }
 
-const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ user, dashboardData, startZoomMeeting, activeTab = 'dashboard' }) => {
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [newCourse, setNewCourse] = useState({ 
-    name: '', 
-    description: '', 
-    imageUrl: '',
-    color: '#f3184c',
-    type: 'COURSE', // COURSE or CLASS
-    price: '0',
-    startDate: new Date().toISOString().split('T')[0],
-    startTime: '09:00',
-    endTime: '10:00'
-  });
-  const [newClass, setNewClass] = useState({
-    title: '',
-    moduleId: '',
-    scheduledAtDate: new Date().toISOString().split('T')[0],
-    scheduledAtTime: '10:00'
-  });
-  const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
-  const [editingClassId, setEditingClassId] = useState<string | null>(null);
-  const [showDeleteClassConfirm, setShowDeleteClassConfirm] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+const StatCard: React.FC<{ label: string; value: string | number; icon: React.ElementType; description?: string }> = ({
+  label, value, icon: Icon, description
+}) => (
+  <div className="glass rounded-2xl p-6 flex flex-col gap-5 relative overflow-hidden group hover:border-primary/40 hover:translate-y-[-4px] transition-all duration-500">
+    <div className="absolute -right-4 -top-4 size-20 bg-primary/5 blur-2xl rounded-full group-hover:bg-primary/10 transition-all" />
+    <div className="flex items-center justify-between">
+        <div className="size-11 rounded-xl flex items-center justify-center shrink-0 shadow-lg bg-primary/10 text-primary border border-primary/20 group-hover:scale-110 transition-transform">
+          <Icon size={20} />
+        </div>
+        {description && (
+            <span className="text-[10px] font-black tracking-widest text-text-muted opacity-40 uppercase">{description}</span>
+        )}
+      </div>
+      <div>
+        <p className="text-text-muted text-[10px] font-black uppercase tracking-[0.25em] mb-1.5 opacity-60">{label}</p>
+        <p className="text-4xl font-black text-text-main tracking-tighter leading-none">{value}</p>
+      </div>
+  </div>
+);
 
-  const handleCreateOrUpdateCourse = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setStatusMessage(null);
+// ── Meeting Form Modal ──
+const MeetingFormModal: React.FC<{
+  courseId: string; editing?: any;
+  onClose: () => void; onSave: () => void; token: string | null;
+}> = ({ courseId, editing, onClose, onSave, token }) => {
+  const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
+  const [title, setTitle] = useState(editing?.title || '');
+  const [topic, setTopic] = useState(editing?.topic || '');
+  const [date, setDate] = useState(editing ? new Date(editing.scheduledAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10));
+  const [time, setTime] = useState(editing ? new Date(editing.scheduledAt).toTimeString().slice(0, 5) : new Date().toTimeString().slice(0, 5));
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSave = async () => {
+    if (!title.trim() || !date || !time) { setError('Please fill all required fields.'); return; }
+    setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      if (editingCourseId) {
-        await axios.put(`/api/courses/${editingCourseId}`, newCourse, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setStatusMessage({ type: 'success', text: 'Course updated successfully!' });
+      const scheduledAt = new Date(`${date}T${time}`).toISOString();
+      if (editing) {
+        await axios.put(`/api/live-classes/${editing.id}`, { title, scheduledAt }, authHeaders);
       } else {
-        await axios.post("/api/courses", newCourse, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setStatusMessage({ type: 'success', text: 'Course created successfully!' });
+        await axios.post('/api/live-classes', { title, topic, moduleId: courseId, scheduledAt }, authHeaders);
       }
-      setTimeout(() => {
-        setShowCreateModal(false);
-        setEditingCourseId(null);
-        setNewCourse({ 
-          name: '', 
-          description: '', 
-          imageUrl: '',
-          color: '#f3184c',
-          type: 'COURSE',
-          price: '0',
-          startDate: new Date().toISOString().split('T')[0],
-          startTime: '09:00',
-          endTime: '10:00'
-        });
-        window.location.reload();
-      }, 1500);
-    } catch (err) {
-      console.error("Failed to save course", err);
-      setStatusMessage({ type: 'error', text: 'Failed to save course. Please try again.' });
+      onSave();
+      onClose();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to save meeting');
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
-  };
-
-  const handleScheduleClass = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setStatusMessage(null);
-    try {
-      const token = localStorage.getItem("token");
-      const scheduledAt = new Date(`${newClass.scheduledAtDate}T${newClass.scheduledAtTime}`).toISOString();
-      
-      if (editingClassId) {
-        await axios.put(`/api/live-classes/${editingClassId}`, {
-          title: newClass.title,
-          moduleId: newClass.moduleId,
-          scheduledAt
-        }, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setStatusMessage({ type: 'success', text: 'Live class updated successfully!' });
-      } else {
-        await axios.post("/api/live-classes", {
-          title: newClass.title,
-          moduleId: newClass.moduleId,
-          scheduledAt
-        }, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setStatusMessage({ type: 'success', text: 'Live class scheduled successfully!' });
-      }
-      
-      setTimeout(() => {
-        setShowScheduleModal(false);
-        setEditingClassId(null);
-        setNewClass({
-          title: '',
-          moduleId: '',
-          scheduledAtDate: new Date().toISOString().split('T')[0],
-          scheduledAtTime: '10:00'
-        });
-        window.location.reload();
-      }, 1500);
-    } catch (err) {
-      console.error("Failed to schedule class", err);
-      setStatusMessage({ type: 'error', text: 'Failed to schedule class. Please try again.' });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDeleteCourse = async (id: string) => {
-    try {
-      const token = localStorage.getItem("token");
-      await axios.delete(`/api/courses/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      window.location.reload();
-    } catch (err) {
-      console.error("Failed to delete course", err);
-    }
-  };
-
-  const openEditModal = (course: any) => {
-    setEditingCourseId(course.id);
-    setNewCourse({
-      name: course.name,
-      description: course.description,
-      imageUrl: course.imageUrl || '',
-      color: course.color || '#f3184c',
-      type: course.type || 'COURSE',
-      price: course.price.toString(),
-      startDate: new Date(course.startDate).toISOString().split('T')[0],
-      startTime: course.startTime,
-      endTime: course.endTime
-    });
-    setShowCreateModal(true);
-  };
-
-  const handleDeleteClass = async (id: string) => {
-    try {
-      const token = localStorage.getItem("token");
-      await axios.delete(`/api/live-classes/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      window.location.reload();
-    } catch (err) {
-      console.error("Failed to delete class", err);
-    }
-  };
-
-  const openEditClassModal = (cls: any) => {
-    setEditingClassId(cls.id);
-    const dateObj = new Date(cls.scheduledAt);
-    setNewClass({
-      title: cls.title,
-      moduleId: cls.moduleId,
-      scheduledAtDate: dateObj.toISOString().split('T')[0],
-      scheduledAtTime: dateObj.toTimeString().slice(0, 5)
-    });
-    setShowScheduleModal(true);
   };
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="grid grid-cols-12 gap-8 bg-gradient-to-br from-background to-surface p-8 rounded-[48px] shadow-inner"
-    >
-      {/* Left Column */}
-      {(activeTab === 'dashboard' || activeTab === 'courses') && (
-        <div className={cn("space-y-8", activeTab === 'courses' ? "col-span-12" : "col-span-12 lg:col-span-8")}>
-          {/* Teacher Profile Card */}
-          {activeTab === 'dashboard' && (
-            <div className="bg-surface rounded-[40px] p-10 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-2 border-white/20 relative overflow-hidden group hover:translate-y-[-4px] hover:translate-x-[-4px] hover:shadow-[0_30px_60px_rgba(0,0,0,0.15)] transition-all duration-500">
-          <div className="flex items-start justify-between relative z-10">
-            <div className="flex items-center gap-8">
-              <div className="size-32 rounded-[32px] border-4 border-primary/20 p-1 bg-surface shadow-xl shadow-white/5 animate-float overflow-hidden">
-                <img 
-                  src={user?.imageUrl || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"} 
-                  alt="Avatar"
-                  className="w-full h-full rounded-[28px] object-cover bg-background"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-5xl font-black tracking-tighter leading-none">
-                    Teacher <span className="text-primary">Panel</span>
-                  </h1>
-                </div>
-                <p className="text-base font-bold text-text-muted max-w-md leading-relaxed">
-                  Welcome back, <span className="text-text-main font-black">{user?.username || 'Teacher'}</span>! You have <span className="text-primary">{dashboardData?.upcomingClasses?.length || 0} sessions</span> scheduled for today.
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-4 items-center relative">
-              <button 
-                onClick={() => setShowCreateModal(true)}
-                className="bg-primary text-white px-8 py-5 rounded-[24px] font-black text-sm shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all flex items-center gap-3 group/btn"
-              >
-                <div className="size-6 rounded-lg bg-surface/20 flex items-center justify-center group-hover/btn:rotate-90 transition-transform">
-                  <Plus size={16} />
-                </div>
-                New Course
-              </button>
-              <div className="relative">
-                <button 
-                  onClick={() => setShowProfileMenu(!showProfileMenu)}
-                  className="size-14 rounded-[24px] bg-sidebar-hover border-2 border-white/10 flex items-center justify-center text-text-muted hover:text-primary hover:border-primary/30 transition-all shadow-sm"
-                  title="More Options"
-                >
-                  <MoreVertical size={20} />
-                </button>
-                
-                <AnimatePresence>
-                  {showProfileMenu && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute right-0 mt-4 w-56 bg-sidebar border-2 border-white/10 rounded-[24px] shadow-2xl z-50 overflow-hidden"
-                    >
-                      <button 
-                        onClick={() => { setShowSettingsModal(true); setShowProfileMenu(false); }}
-                        className="w-full flex items-center gap-4 px-6 py-4 text-sm font-black text-text-muted hover:bg-surface hover:text-primary transition-all border-b border-white/5"
-                      >
-                        <Settings size={18} />
-                        Settings
-                      </button>
-                      <button 
-                        onClick={() => { /* Add profile action */ setShowProfileMenu(false); }}
-                        className="w-full flex items-center gap-4 px-6 py-4 text-sm font-black text-text-muted hover:bg-surface hover:text-primary transition-all"
-                      >
-                        <Users size={18} />
-                        View Profile
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </div>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-background/80 backdrop-blur-md" onClick={onClose}>
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass w-full max-w-lg rounded-[2.5rem] p-8 shadow-2xl border-white/10" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="font-black text-2xl tracking-tight">{editing ? 'Edit Class' : 'Schedule a Live Class'}</h2>
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mt-1">Set the class title, date, and time</p>
           </div>
-
-          {/* Quick Stats Blocks */}
-          <div className="mt-12 grid grid-cols-3 gap-6 relative z-10">
-            {[
-              { label: "Active Courses", value: dashboardData?.stats?.activeCourses || 0, color: "text-white", bg: "bg-sidebar", icon: BookOpen },
-              { label: "Total Students", value: dashboardData?.stats?.totalStudents || 0, color: "text-text-main", bg: "bg-background", icon: Users },
-              { label: "Live Hours", value: "0", color: "text-text-main", bg: "bg-background", icon: Video }
-            ].map((stat, i) => (
-              <div key={i} className={cn("rounded-[32px] p-8 relative overflow-hidden group/stat", stat.bg)}>
-                <div className="relative z-10">
-                  <div className={cn("size-10 rounded-xl flex items-center justify-center mb-4 transition-transform group-hover/stat:scale-110", stat.bg === 'bg-sidebar' ? "bg-surface/10 text-white" : "bg-surface text-primary shadow-sm")}>
-                    <stat.icon size={18} />
-                  </div>
-                  <p className={cn("text-[10px] font-black uppercase tracking-widest mb-1", stat.bg === 'bg-sidebar' ? "text-white/40" : "text-text-muted")}>
-                    {stat.label}
-                  </p>
-                  <p className={cn("text-4xl font-black tracking-tighter", stat.color)}>{stat.value}</p>
-                </div>
-                <div className="absolute -right-4 -bottom-4 size-20 bg-surface/5 rounded-full blur-2xl group-hover/stat:bg-surface/10 transition-all" />
-              </div>
-            ))}
-          </div>
-
-          {/* Background Decorative Elements */}
-          <div className="absolute top-0 right-0 size-64 bg-primary/5 rounded-full blur-[100px] -mr-32 -mt-32" />
-          <div className="absolute bottom-0 left-0 size-64 bg-primary/5 rounded-full blur-[100px] -ml-32 -mb-32" />
+          <button onClick={onClose} className="size-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-danger/20 hover:text-danger transition-all"><X size={18} /></button>
         </div>
-        )}
-
-        {/* Courses Section */}
-        <div className="bg-surface rounded-[40px] p-10 shadow-[0_10px_30px_rgba(0,0,0,0.05)] border-2 border-white/20">
-          <div className="flex items-center justify-between mb-10">
-            <h2 className="text-3xl font-black tracking-tighter">Active <span className="text-emerald-500">Courses</span></h2>
-            <button className="text-xs text-text-muted font-black uppercase tracking-widest hover:text-primary transition-colors">Manage all</button>
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <Label className="text-[10px] uppercase font-black tracking-widest text-text-muted ml-4">Meeting Identity</Label>
+            <Input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Unit 04 Review: Advance Mechanics" className="h-14 px-6 rounded-[1.5rem]" />
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {dashboardData?.teacherModules?.length > 0 ? (
-              dashboardData.teacherModules.map((course: any, idx: number) => (
-                <motion.div 
-                  key={course.id} 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.1 }}
-                  className="bg-background rounded-[32px] p-8 group hover:bg-surface hover:shadow-2xl hover:shadow-white/5 transition-all duration-500 border border-transparent hover:border-white/5 relative overflow-hidden"
-                >
-                  <div className="aspect-[16/10] rounded-2xl mb-6 overflow-hidden relative z-10 shadow-sm border border-white/5">
-                    {course.imageUrl ? (
-                      <img 
-                        src={course.imageUrl} 
-                        alt={course.name}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : (
-                      <div 
-                        className="w-full h-full flex items-center justify-center text-white"
-                        style={{ backgroundColor: course.color || '#f3184c' }}
-                      >
-                        <span className="text-4xl font-black tracking-tighter opacity-20 uppercase">{course.name.substring(0, 2)}</span>
-                      </div>
-                    )}
-                    <div className="absolute top-4 left-4 flex gap-2">
-                      <div className="bg-surface/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-text-main shadow-sm">
-                        {course.type || 'COURSE'}
-                      </div>
-                      <div className="bg-primary text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">
-                        ${course.price}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="relative z-10">
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="font-black text-2xl group-hover:text-primary transition-colors tracking-tight leading-tight flex-1 pr-4">{course.name}</h3>
-                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); openEditModal(course); }}
-                          className="size-10 rounded-xl bg-surface border border-white/5 flex items-center justify-center text-text-muted hover:text-primary hover:border-primary transition-all shadow-sm"
-                        >
-                          <Settings size={18} />
-                        </button>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(course.id); }}
-                          className="size-10 rounded-xl bg-surface border border-white/5 flex items-center justify-center text-text-muted hover:text-rose-500 hover:border-rose-500 transition-all shadow-sm"
-                        >
-                          <X size={18} />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Users size={14} className="text-text-muted" />
-                        <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">{course.enrollments?.length || 0} Students</span>
-                      </div>
-                      <div className="flex -space-x-2">
-                        {course.enrollments?.slice(0, 3).map((en: any, i: number) => (
-                          <div key={i} className="size-8 rounded-full border-2 border-white bg-gray-200 overflow-hidden shadow-sm">
-                            <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${en.userId}`} alt="" />
-                          </div>
-                        ))}
-                        {(course.enrollments?.length || 0) > 3 && (
-                          <div className="size-8 rounded-full border-2 border-white bg-sidebar-hover flex items-center justify-center text-[10px] font-black text-text-muted shadow-sm">
-                            +{(course.enrollments?.length || 0) - 3}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {/* Decorative shape */}
-                  <div className="absolute -right-4 -bottom-4 size-24 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all duration-500" />
-                </motion.div>
-              ))
-            ) : (
-              <div className="col-span-2 py-20 text-center bg-background rounded-[32px] border-2 border-dashed border-white/5">
-                <div className="size-20 rounded-3xl bg-surface shadow-sm flex items-center justify-center mx-auto mb-6">
-                  <BookOpen size={32} className="text-white/10" />
-                </div>
-                <p className="text-text-muted font-bold">No courses created yet.</p>
-                <button 
-                  onClick={() => setShowCreateModal(true)}
-                  className="mt-4 text-primary font-black text-xs uppercase tracking-widest hover:underline"
-                >
-                  Create your first course
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-      )}
-
-      {/* Right Column */}
-      {(activeTab === 'dashboard' || activeTab === 'live') && (
-      <div className={cn("space-y-8", activeTab === 'live' ? "col-span-12" : "col-span-12 lg:col-span-4")}>
-        {/* Live Sessions Card */}
-        <div className="bg-surface rounded-[40px] p-10 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-2 border-white/20 relative overflow-hidden hover:translate-y-[-4px] hover:translate-x-[-4px] transition-all duration-500">
-          <div className="flex items-center justify-between mb-10 relative z-10">
-            <h2 className="text-3xl font-black tracking-tighter">Live <span className="text-blue-500">Sessions</span></h2>
-            <button 
-              onClick={() => setShowScheduleModal(true)}
-              className="text-xs text-text-muted font-black uppercase tracking-widest hover:text-primary transition-colors"
-            >
-              Schedule
-            </button>
-          </div>
-
-          <div className="space-y-6 relative z-10">
-            {dashboardData?.upcomingClasses?.length > 0 ? (
-              dashboardData.upcomingClasses.map((cls: any) => (
-                <div key={cls.id} className="flex items-center gap-6 p-4 rounded-[24px] hover:bg-background transition-all group border border-transparent hover:border-white/5">
-                  <div className="size-16 rounded-2xl bg-sidebar flex flex-col items-center justify-center text-white shrink-0 shadow-lg group-hover:scale-110 transition-transform">
-                    <span className="text-[10px] font-black uppercase text-white/40">{new Date(cls.scheduledAt).toLocaleDateString('en-US', { month: 'short' })}</span>
-                    <span className="text-2xl font-black leading-none">{new Date(cls.scheduledAt).getDate()}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-black text-lg truncate group-hover:text-primary transition-colors tracking-tight">{cls.title}</h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Clock size={12} className="text-text-muted" />
-                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
-                        {new Date(cls.scheduledAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} • {cls.modules?.name}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => openEditClassModal(cls)}
-                      className="size-10 rounded-xl bg-surface border border-white/5 flex items-center justify-center text-text-muted hover:text-primary hover:border-primary transition-all shadow-sm opacity-0 group-hover:opacity-100"
-                      title="Edit Session"
-                    >
-                      <Settings size={16} />
-                    </button>
-                    <button 
-                      onClick={() => setShowDeleteClassConfirm(cls.id)}
-                      className="size-10 rounded-xl bg-surface border border-white/5 flex items-center justify-center text-text-muted hover:text-rose-500 hover:border-rose-500 transition-all shadow-sm opacity-0 group-hover:opacity-100"
-                      title="Delete Session"
-                    >
-                      <X size={16} />
-                    </button>
-                    <button 
-                      onClick={() => startZoomMeeting(cls)}
-                      className="size-12 rounded-2xl bg-surface border border-white/5 flex items-center justify-center text-text-muted hover:bg-primary hover:text-white hover:border-primary transition-all shadow-sm group-hover:translate-x-1"
-                      title="Join Meeting"
-                    >
-                      <ArrowRight size={20} />
-                    </button>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="py-12 text-center bg-background rounded-[32px] border-2 border-dashed border-white/5">
-                <div className="size-16 rounded-2xl bg-surface shadow-sm flex items-center justify-center mx-auto mb-4">
-                  <Video size={24} className="text-white/10" />
-                </div>
-                <p className="text-text-muted text-xs font-bold">No sessions scheduled.</p>
-              </div>
-            )}
-          </div>
-          <div className="absolute top-0 right-0 size-32 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16" />
-        </div>
-
-        {/* Statistics Card */}
-        {activeTab === 'dashboard' && (
-        <div className="bg-surface rounded-[40px] p-10 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-2 border-white/20 relative overflow-hidden hover:translate-y-[-4px] hover:translate-x-[-4px] transition-all duration-500">
-          <h2 className="text-3xl font-black tracking-tighter mb-10">Perfor<span className="text-amber-500">mance</span></h2>
-          <div className="space-y-8">
-            {[
-              { label: "Course Completion", value: 85, color: "bg-primary" },
-              { label: "Student Engagement", value: 92, color: "bg-blue-500" },
-              { label: "Average Rating", value: 98, color: "bg-emerald-500" }
-            ].map((stat, i) => (
-              <div key={i} className="group">
-                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-3">
-                  <span className="text-text-muted group-hover:text-text-main transition-colors">{stat.label}</span>
-                  <span className="text-text-main">{stat.value}%</span>
-                </div>
-                <div className="h-3 bg-sidebar-hover rounded-full overflow-hidden p-0.5">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${stat.value}%` }}
-                    className={cn("h-full rounded-full shadow-lg", stat.color)}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-10 p-6 bg-background rounded-[32px] border border-white/5">
-            <div className="flex items-center gap-4">
-              <div className="size-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                <TrendingUp size={24} />
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Monthly Growth</p>
-                <p className="text-xl font-black">+0% <span className="text-xs font-bold text-emerald-500">vs last month</span></p>
-              </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-[10px] uppercase font-black tracking-widest text-text-muted ml-4">Schedule Date</Label>
+              <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-14 px-6 rounded-[1.5rem]" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] uppercase font-black tracking-widest text-text-muted ml-4">Start Time</Label>
+              <Input type="time" value={time} onChange={e => setTime(e.target.value)} className="h-14 px-6 rounded-[1.5rem]" />
             </div>
           </div>
-        </div>
-        )}
-
-        {/* Help Card */}
-        {activeTab === 'dashboard' && (
-        <div className="bg-sidebar rounded-[40px] p-10 text-white relative overflow-hidden group shadow-2xl shadow-black/20">
-          <div className="relative z-10">
-            <div className="size-16 rounded-2xl bg-surface/10 flex items-center justify-center mb-6 group-hover:rotate-12 transition-transform">
-              <MessageSquare size={28} className="text-primary" />
+          
+          {error && (
+            <div className="p-4 bg-danger/10 border border-danger/20 rounded-2xl text-danger text-[10px] font-black flex items-center gap-2 uppercase tracking-widest">
+              <AlertCircle size={14} /> {error}
             </div>
-            <h3 className="text-3xl font-black tracking-tighter mb-4 leading-tight">Need help with your classes?</h3>
-            <p className="text-base font-bold text-white/40 mb-10 leading-relaxed">Access our instructor resources, community forums, and 24/7 support center.</p>
-            <button className="w-full bg-surface text-[#1e1e1e] py-5 rounded-[24px] font-black text-sm hover:bg-primary hover:text-white transition-all shadow-xl">
-              Resources Center
-            </button>
+          )}
+
+          <div className="flex gap-4 pt-4 border-t border-white/5">
+             <Button variant="outline" onClick={onClose} className="flex-1 h-14 rounded-2xl">Cancel</Button>
+             <Button onClick={handleSave} disabled={loading} className="flex-[2] h-14 rounded-2xl shadow-xl shadow-primary/20">
+               {loading ? <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" /> : <Zap size={18} className="mr-2" />}
+               {editing ? 'Update Class' : 'Schedule Class'}
+             </Button>
           </div>
-          {/* Decorative shapes */}
-          <div className="absolute -right-10 -top-10 size-64 bg-primary/10 rounded-full blur-[80px] group-hover:bg-primary/20 transition-all" />
-          <div className="absolute -left-20 -bottom-20 size-64 bg-surface/5 rounded-full blur-[80px]" />
         </div>
-        )}
-      </div>
-      )}
-
-      {/* Create Course Modal */}
-      <AnimatePresence>
-        {showCreateModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowCreateModal(false)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-md"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 40 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 40 }}
-              className="bg-surface w-full max-w-2xl rounded-[48px] p-12 relative z-10 shadow-2xl overflow-hidden"
-            >
-              <div className="absolute top-0 right-0 size-64 bg-primary/5 rounded-full blur-[100px] -mr-32 -mt-32" />
-              
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-12">
-                  <div>
-                    <h2 className="text-4xl font-black tracking-tighter mb-2">{editingCourseId ? 'Edit Course' : 'Create New Course'}</h2>
-                    <p className="text-text-muted font-bold">Launch a new learning experience for your students.</p>
-                  </div>
-                  <button onClick={() => { setShowCreateModal(false); setEditingCourseId(null); }} className="size-12 rounded-2xl bg-sidebar-hover flex items-center justify-center hover:bg-primary hover:text-white transition-all group">
-                    <X size={24} className="group-hover:rotate-90 transition-transform" />
-                  </button>
-                </div>
-
-                <form onSubmit={handleCreateOrUpdateCourse} className="space-y-8">
-                  {statusMessage && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={cn(
-                        "p-4 rounded-2xl text-sm font-bold text-center",
-                        statusMessage.type === 'success' ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
-                      )}
-                    >
-                      {statusMessage.text}
-                    </motion.div>
-                  )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-h-[60vh] overflow-y-auto pr-4 custom-scrollbar">
-                    <div className="space-y-6">
-                      <div>
-                        <label className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3 block">Course Name</label>
-                        <input 
-                          required
-                          type="text" 
-                          value={newCourse.name}
-                          onChange={e => setNewCourse({...newCourse, name: e.target.value})}
-                          placeholder="e.g. Advanced Mathematics" 
-                          className="w-full bg-background border-2 border-transparent rounded-2xl py-5 px-8 text-base font-bold focus:bg-surface focus:border-primary/20 focus:ring-4 focus:ring-primary/5 transition-all outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3 block">Type</label>
-                        <div className="grid grid-cols-2 gap-4">
-                          {['COURSE', 'CLASS'].map(type => (
-                            <button
-                              key={type}
-                              type="button"
-                              onClick={() => setNewCourse({...newCourse, type})}
-                              className={cn(
-                                "py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all border-2",
-                                newCourse.type === type 
-                                  ? "bg-primary text-white border-primary shadow-lg shadow-primary/20" 
-                                  : "bg-background text-text-muted border-transparent hover:bg-surface hover:border-white/5"
-                              )}
-                            >
-                              {type}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3 block">Description</label>
-                        <textarea 
-                          required
-                          rows={4}
-                          value={newCourse.description}
-                          onChange={e => setNewCourse({...newCourse, description: e.target.value})}
-                          placeholder="Describe what students will learn..." 
-                          className="w-full bg-background border-2 border-transparent rounded-2xl py-5 px-8 text-base font-bold focus:bg-surface focus:border-primary/20 focus:ring-4 focus:ring-primary/5 transition-all outline-none resize-none"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-6">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3 block">Price ($)</label>
-                          <input 
-                            required
-                            type="number" 
-                            value={newCourse.price}
-                            onChange={e => setNewCourse({...newCourse, price: e.target.value})}
-                            className="w-full bg-background border-2 border-transparent rounded-2xl py-5 px-8 text-base font-bold focus:bg-surface focus:border-primary/20 focus:ring-4 focus:ring-primary/5 transition-all outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3 block">Start Date</label>
-                          <input 
-                            required
-                            type="date" 
-                            value={newCourse.startDate}
-                            onChange={e => setNewCourse({...newCourse, startDate: e.target.value})}
-                            className="w-full bg-background border-2 border-transparent rounded-2xl py-5 px-8 text-base font-bold focus:bg-surface focus:border-primary/20 focus:ring-4 focus:ring-primary/5 transition-all outline-none"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3 block">Theme Color</label>
-                        <div className="flex gap-3">
-                          {['#f3184c', '#1e1e1e', '#3b82f6', '#10b981', '#f59e0b'].map(color => (
-                            <button
-                              key={color}
-                              type="button"
-                              onClick={() => setNewCourse({...newCourse, color})}
-                              className={cn(
-                                "size-10 rounded-xl transition-all border-4",
-                                newCourse.color === color ? "border-primary/20 scale-110" : "border-transparent"
-                              )}
-                              style={{ backgroundColor: color }}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3 block">Cover Image URL (Optional)</label>
-                        <div className="relative group/input">
-                          <div className="absolute left-6 top-1/2 -translate-y-1/2 text-text-muted group-focus-within/input:text-primary transition-colors">
-                            <ImageIcon size={20} />
-                          </div>
-                          <input 
-                            type="url" 
-                            value={newCourse.imageUrl}
-                            onChange={e => setNewCourse({...newCourse, imageUrl: e.target.value})}
-                            placeholder="https://images.unsplash.com/..." 
-                            className="w-full bg-background border-2 border-transparent rounded-2xl py-5 pl-16 pr-8 text-base font-bold focus:bg-surface focus:border-primary/20 focus:ring-4 focus:ring-primary/5 transition-all outline-none"
-                          />
-                        </div>
-                      </div>
-                      <div className="aspect-video rounded-3xl bg-background border-2 border-dashed border-white/5 flex items-center justify-center overflow-hidden relative group/preview">
-                        {newCourse.imageUrl ? (
-                          <img src={newCourse.imageUrl} className="w-full h-full object-cover" alt="Preview" />
-                        ) : (
-                          <div 
-                            className="w-full h-full flex items-center justify-center text-white"
-                            style={{ backgroundColor: newCourse.color }}
-                          >
-                            <div className="text-center">
-                              <ImageIcon size={32} className="text-white/20 mx-auto mb-2" />
-                              <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Color Preview</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-6 flex gap-4">
-                    <button 
-                      type="button"
-                      onClick={() => { setShowCreateModal(false); setEditingCourseId(null); }}
-                      className="flex-1 bg-sidebar-hover text-text-main py-5 rounded-[24px] font-black text-base hover:bg-gray-200 transition-all"
-                    >
-                      Cancel
-                    </button>
-                    <button 
-                      disabled={isSubmitting}
-                      type="submit"
-                      className="flex-[2] bg-primary text-white py-5 rounded-[24px] font-black text-base shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-3"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        editingCourseId ? "Update Course" : "Create Course"
-                      )}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-      {/* Schedule Live Class Modal */}
-      <AnimatePresence>
-        {showScheduleModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowScheduleModal(false)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-md"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 40 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 40 }}
-              className="bg-surface w-full max-w-2xl rounded-[48px] p-12 relative z-10 shadow-2xl overflow-hidden"
-            >
-              <div className="absolute top-0 right-0 size-64 bg-primary/5 rounded-full blur-[100px] -mr-32 -mt-32" />
-              
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-12">
-                  <div>
-                    <h2 className="text-4xl font-black tracking-tighter mb-2">Schedule Live Class</h2>
-                    <p className="text-text-muted font-bold">Set up a new Zoom session for your students.</p>
-                  </div>
-                  <button onClick={() => setShowScheduleModal(false)} className="size-12 rounded-2xl bg-sidebar-hover flex items-center justify-center hover:bg-primary hover:text-white transition-all group">
-                    <X size={24} className="group-hover:rotate-90 transition-transform" />
-                  </button>
-                </div>
-
-                <form onSubmit={handleScheduleClass} className="space-y-8">
-                  {statusMessage && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={cn(
-                        "p-4 rounded-2xl text-sm font-bold text-center",
-                        statusMessage.type === 'success' ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
-                      )}
-                    >
-                      {statusMessage.text}
-                    </motion.div>
-                  )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-h-[60vh] overflow-y-auto pr-4 custom-scrollbar">
-                    <div className="space-y-6">
-                      <div>
-                        <label className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3 block">Session Title</label>
-                        <input 
-                          required
-                          type="text" 
-                          value={newClass.title}
-                          onChange={e => setNewClass({...newClass, title: e.target.value})}
-                          placeholder="e.g. Introduction to Calculus" 
-                          className="w-full bg-background border-2 border-transparent rounded-2xl py-5 px-8 text-base font-bold focus:bg-surface focus:border-primary/20 focus:ring-4 focus:ring-primary/5 transition-all outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3 block">Select Course</label>
-                        <select 
-                          required
-                          value={newClass.moduleId}
-                          onChange={e => setNewClass({...newClass, moduleId: e.target.value})}
-                          className="w-full bg-background border-2 border-transparent rounded-2xl py-5 px-8 text-base font-bold focus:bg-surface focus:border-primary/20 focus:ring-4 focus:ring-primary/5 transition-all outline-none appearance-none"
-                        >
-                          <option value="" disabled>Select a course...</option>
-                          {dashboardData?.teacherModules?.map((mod: any) => (
-                            <option key={mod.id} value={mod.id}>{mod.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-6">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3 block">Date</label>
-                          <input 
-                            required
-                            type="date" 
-                            value={newClass.scheduledAtDate}
-                            onChange={e => setNewClass({...newClass, scheduledAtDate: e.target.value})}
-                            className="w-full bg-background border-2 border-transparent rounded-2xl py-5 px-8 text-base font-bold focus:bg-surface focus:border-primary/20 focus:ring-4 focus:ring-primary/5 transition-all outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3 block">Time</label>
-                          <input 
-                            required
-                            type="time" 
-                            value={newClass.scheduledAtTime}
-                            onChange={e => setNewClass({...newClass, scheduledAtTime: e.target.value})}
-                            className="w-full bg-background border-2 border-transparent rounded-2xl py-5 px-8 text-base font-bold focus:bg-surface focus:border-primary/20 focus:ring-4 focus:ring-primary/5 transition-all outline-none"
-                          />
-                        </div>
-                      </div>
-                      <div className="p-6 bg-blue-50 rounded-3xl border border-blue-100 mt-4">
-                        <h4 className="text-blue-800 font-bold text-sm mb-2 flex items-center gap-2">
-                          <Video size={16} />
-                          Automatic Zoom Integration
-                        </h4>
-                        <p className="text-blue-600/80 text-xs leading-relaxed">
-                          A unique Zoom meeting will be automatically generated for this class using your configured Zoom API keys. Students can join directly from their dashboard.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-6 flex gap-4">
-                    <button 
-                      type="button"
-                      onClick={() => setShowScheduleModal(false)}
-                      className="flex-1 bg-sidebar-hover text-text-main py-5 rounded-[24px] font-black text-base hover:bg-gray-200 transition-all"
-                    >
-                      Cancel
-                    </button>
-                    <button 
-                      disabled={isSubmitting}
-                      type="submit"
-                      className="flex-[2] bg-primary text-white py-5 rounded-[24px] font-black text-base shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-3"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          Scheduling...
-                        </>
-                      ) : (
-                        "Schedule Class"
-                      )}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Delete Confirmation Modal */}
-      <AnimatePresence>
-        {showDeleteConfirm && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowDeleteConfirm(null)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-md"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-surface w-full max-w-md rounded-[40px] p-10 relative z-10 shadow-2xl text-center"
-            >
-              <div className="size-20 rounded-3xl bg-rose-50 text-rose-500 flex items-center justify-center mx-auto mb-6">
-                <X size={40} />
-              </div>
-              <h3 className="text-2xl font-black tracking-tighter mb-2">Delete Course?</h3>
-              <p className="text-text-muted font-bold mb-8">This action cannot be undone. All enrollments and data will be lost.</p>
-              <div className="flex gap-4">
-                <button 
-                  onClick={() => setShowDeleteConfirm(null)}
-                  className="flex-1 py-4 rounded-2xl bg-sidebar-hover font-black text-sm hover:bg-gray-200 transition-all"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={() => handleDeleteCourse(showDeleteConfirm)}
-                  className="flex-1 py-4 rounded-2xl bg-rose-500 text-white font-black text-sm hover:bg-rose-600 transition-all shadow-lg shadow-rose-500/20"
-                >
-                  Delete
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-
-        {showDeleteClassConfirm && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowDeleteClassConfirm(null)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-md"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-surface w-full max-w-md rounded-[40px] p-10 relative z-10 shadow-2xl text-center"
-            >
-              <div className="size-20 rounded-3xl bg-rose-50 text-rose-500 flex items-center justify-center mx-auto mb-6">
-                <X size={40} />
-              </div>
-              <h3 className="text-2xl font-black tracking-tighter mb-2">Delete Session?</h3>
-              <p className="text-text-muted font-bold mb-8">This action cannot be undone. The Zoom meeting will be canceled.</p>
-              <div className="flex gap-4">
-                <button 
-                  onClick={() => setShowDeleteClassConfirm(null)}
-                  className="flex-1 py-4 rounded-2xl bg-sidebar-hover font-black text-sm hover:bg-gray-200 transition-all"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={() => handleDeleteClass(showDeleteClassConfirm)}
-                  className="flex-1 py-4 rounded-2xl bg-rose-500 text-white font-black text-sm hover:bg-rose-600 transition-all shadow-lg shadow-rose-500/20"
-                >
-                  Delete
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Settings Modal */}
-      <AnimatePresence>
-        {showSettingsModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowSettingsModal(false)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-md"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 40 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 40 }}
-              className="bg-surface w-full max-w-xl rounded-[48px] p-12 relative z-10 shadow-2xl overflow-hidden"
-            >
-              <div className="absolute top-0 right-0 size-64 bg-primary/5 rounded-full blur-[100px] -mr-32 -mt-32" />
-              
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-12">
-                  <div>
-                    <h2 className="text-4xl font-black tracking-tighter mb-2">Settings</h2>
-                    <p className="text-text-muted font-bold">Manage your instructor profile and preferences.</p>
-                  </div>
-                  <button onClick={() => setShowSettingsModal(false)} className="size-12 rounded-2xl bg-sidebar-hover flex items-center justify-center hover:bg-primary hover:text-white transition-all group">
-                    <X size={24} className="group-hover:rotate-90 transition-transform" />
-                  </button>
-                </div>
-
-                <div className="space-y-8">
-                  <div className="p-6 bg-background rounded-[32px] border border-white/5">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-4">Profile Information</h3>
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-bold text-text-muted">Username</span>
-                        <span className="text-sm font-black text-text-main">{user?.username}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-bold text-text-muted">Email</span>
-                        <span className="text-sm font-black text-text-main">{user?.email}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-bold text-text-muted">Role</span>
-                        <span className="text-sm font-black text-primary uppercase tracking-widest text-[10px] bg-primary/10 px-2 py-1 rounded-full">
-                          {user?.role}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <button className="w-full py-5 rounded-[24px] bg-sidebar text-white font-black text-sm hover:bg-black transition-all shadow-xl">
-                      Change Password
-                    </button>
-                    <button 
-                      onClick={() => {
-                        localStorage.removeItem("token");
-                        window.location.href = "/";
-                      }}
-                      className="w-full py-5 rounded-[24px] bg-rose-50 text-rose-600 font-black text-sm hover:bg-rose-100 transition-all"
-                    >
-                      Log Out
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+      </motion.div>
+    </div>
   );
 };
 
-export default TeacherDashboard;
+// ── Course Form Modal ──
+const CourseFormModal: React.FC<{
+  editing?: any; onClose: () => void; onSave: () => void; token: string | null;
+}> = ({ editing, onClose, onSave, token }) => {
+  const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
+  const [name, setName] = useState(editing?.name || '');
+  const [description, setDescription] = useState(editing?.description || '');
+  const [price, setPrice] = useState(String(editing?.price || ''));
+  const [imageUrl, setImageUrl] = useState(editing?.imageUrl || '');
+  const [driveFolder, setDriveFolder] = useState(editing?.googleDriveFolderName || '');
+  const [color, setColor] = useState(editing?.color || '#f3184c');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSave = async () => {
+    if (!name.trim() || !description.trim() || price === '') { setError('Please fill all required fields.'); return; }
+    setLoading(true);
+    try {
+      const data = {
+        name, description, price: Number(price), imageUrl: imageUrl || null,
+        color, type: 'COURSE',
+        startDate: new Date().toISOString(), startTime: '09:00', endTime: '10:00',
+        googleDriveFolderName: driveFolder || null
+      };
+      if (editing) {
+        await axios.put(`/api/courses/${editing.id}`, data, authHeaders);
+      } else {
+        await axios.post('/api/courses', data, authHeaders);
+      }
+      onSave();
+      onClose();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to save course');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-background/80 backdrop-blur-md overflow-y-auto pt-20" onClick={onClose}>
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass w-full max-w-2xl rounded-[3rem] p-10 shadow-2xl border-white/10" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-8 pb-6 border-b border-white/5">
+          <div>
+            <h2 className="text-3xl font-black tracking-tighter">{editing ? 'Edit Class' : 'Create New Class Hub'}</h2>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mt-1">Class Details & Pricing</p>
+          </div>
+          <button onClick={onClose} className="size-12 rounded-2xl bg-white/5 flex items-center justify-center hover:bg-danger/20 hover:text-danger transition-all"><X size={20} /></button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-6 md:col-span-2">
+                <div className="space-y-2">
+                    <Label className="text-[10px] uppercase font-black tracking-widest text-text-muted ml-4">Class Hub Name</Label>
+                    <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Pure Mathematics 2025 Theory" className="h-14 px-6 rounded-2xl" />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-[10px] uppercase font-black tracking-widest text-text-muted ml-4">Class Description</Label>
+                    <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder="Describe the mission of this class..." className="w-full bg-white/[0.03] border border-white/10 rounded-2xl p-6 text-white outline-none focus:ring-4 focus:ring-primary/10 transition-all font-semibold text-sm" />
+                </div>
+            </div>
+
+            <div className="space-y-2">
+                <Label className="text-[10px] uppercase font-black tracking-widest text-text-muted ml-4">Enrollment Fee (LKR)</Label>
+                <div className="relative group">
+                    <span className="absolute left-6 top-1/2 -translate-y-1/2 text-[11px] font-black text-text-muted opacity-40 uppercase tracking-tighter">LKR</span>
+                    <Input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="0.00" className="h-14 pl-16 rounded-2xl text-lg font-black text-primary" />
+                </div>
+            </div>
+
+            <div className="space-y-2">
+                <Label className="text-[10px] uppercase font-black tracking-widest text-text-muted ml-4">Cover Asset (URL)</Label>
+                <Input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://..." className="h-14 px-6 rounded-2xl" />
+            </div>
+
+            <div className="space-y-2">
+                <Label className="text-[10px] uppercase font-black tracking-widest text-text-muted ml-4">Google Drive Handle</Label>
+                <div className="relative group">
+                   <BookOpen size={16} className="absolute left-6 top-1/2 -translate-y-1/2 text-text-muted" />
+                   <Input value={driveFolder} onChange={e => setDriveFolder(e.target.value.replace(/\s+/g, '-'))} placeholder="ALMaths-V1" className="h-14 pl-14 rounded-2xl" />
+                </div>
+            </div>
+
+            <div className="space-y-2">
+                <Label className="text-[10px] uppercase font-black tracking-widest text-text-muted ml-4">Class Accent Color</Label>
+                <div className="flex items-center gap-4 bg-white/[0.03] border border-white/5 h-14 px-5 rounded-2xl">
+                    <input type="color" value={color} onChange={e => setColor(e.target.value)} className="size-9 rounded-xl cursor-pointer bg-transparent border-none p-0 overflow-hidden" />
+                    <span className="text-sm font-mono font-black text-text-muted opacity-60">{color.toUpperCase()}</span>
+                </div>
+            </div>
+        </div>
+
+        {error && (
+            <div className="mt-8 p-4 bg-danger/10 border border-danger/20 rounded-2xl text-danger text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-3">
+                <AlertCircle size={16} /> {error}
+            </div>
+        )}
+
+        <div className="flex gap-4 pt-10 mt-6 border-t border-white/5">
+             <Button variant="outline" onClick={onClose} className="flex-1 h-14 rounded-2xl">Cancel</Button>
+             <Button onClick={handleSave} disabled={loading} className="flex-[2] h-14 rounded-2xl shadow-xl shadow-primary/20">
+               {loading ? <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" /> : <ShieldCheck size={18} className="mr-2" />}
+               {editing ? 'Save Changes' : 'Create Class'}
+             </Button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+export default function TeacherDashboard({ user, dashboardData, startZoomMeeting, activeTab, setActiveTab, token }: TeacherDashboardProps) {
+  const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
+  const [courses, setCourses] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+  const [studentCourseFilter, setStudentCourseFilter] = useState('');
+
+  // Course management state
+  const [selectedCourse, setSelectedCourse] = useState<any>(null);
+  const [classTab, setClassTab] = useState<'meetings' | 'details' | 'students'>('meetings');
+  const [showPastMeetings, setShowPastMeetings] = useState(false);
+  const [showCourseForm, setShowCourseForm] = useState(false);
+  const [editingCourse, setEditingCourse] = useState<any>(null);
+  const [showMeetingForm, setShowMeetingForm] = useState(false);
+  const [editingMeeting, setEditingMeeting] = useState<any>(null);
+
+  const displayName = user?.fullName || user?.username;
+  const now = new Date();
+
+  const fetchCourses = async () => {
+    setLoading(true);
+    try {
+      const r = await axios.get('/api/teacher/courses', authHeaders);
+      setCourses(r.data);
+    } catch {}
+    setLoading(false);
+  };
+
+  const fetchStudents = async () => {
+    setLoading(true);
+    try {
+      const params = studentCourseFilter ? `?moduleId=${studentCourseFilter}` : '';
+      const r = await axios.get(`/api/teacher/students${params}`, authHeaders);
+      setStudents(r.data);
+    } catch {}
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'classes' || activeTab === 'dashboard') fetchCourses();
+    if (activeTab === 'students') fetchStudents();
+  }, [activeTab, studentCourseFilter]);
+
+  const deleteCourse = async (id: string) => {
+    if (!confirm('Permanently decommission this course? All associated meeting data will be erased.')) return;
+    await axios.delete(`/api/courses/${id}`, authHeaders);
+    setSelectedCourse(null);
+    fetchCourses();
+  };
+
+  const deleteMeeting = async (id: string) => {
+    if (!confirm('Remove this live session from the records?')) return;
+    await axios.delete(`/api/live-classes/${id}`, authHeaders);
+    if (selectedCourse) {
+      const r = await axios.get('/api/teacher/courses', authHeaders);
+      const updated = r.data.find((c: any) => c.id === selectedCourse.id);
+      if (updated) setSelectedCourse(updated);
+      setCourses(r.data);
+    }
+  };
+
+  // Computed stats
+  const totalStudentsEnrolled = courses.reduce((s, c) => s + (c.enrollments?.filter((e: any) => e.status === 'PAID').length || 0), 0);
+  const totalRevenueGenerated = courses.reduce((s, c) => s + (c.enrollments?.filter((e: any) => e.status === 'PAID').reduce((r: number, e: any) => r + Number(e.amount), 0) || 0), 0);
+  const upcomingMeetingsCount = courses.flatMap(c => c.live_classes || []).filter(m => new Date(m.scheduledAt) > now).length;
+
+  const filteredStudents = students.filter(s => {
+    const name = s.users?.fullName || s.users?.username || '';
+    return name.toLowerCase().includes(search.toLowerCase()) || s.users?.email?.toLowerCase().includes(search.toLowerCase());
+  });
+
+  // ── Overview / Dashboard ──
+  if (activeTab === 'dashboard') {
+    const upcoming = courses.flatMap(c => (c.live_classes || []).map((m: any) => ({ ...m, courseName: c.name, courseColor: c.color })))
+      .filter(m => new Date(m.scheduledAt) > now)
+      .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
+      .slice(0, 5);
+
+    return (
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-10">
+        <div className="relative overflow-hidden rounded-[3rem] bg-surface-2 border border-white/5 p-10 md:p-14 mb-8">
+            <div className="absolute -right-20 -top-20 size-[400px] bg-primary/10 blur-[130px] rounded-full" />
+            <div className="absolute left-1/4 -bottom-20 size-[300px] bg-primary/5 blur-[100px] rounded-full" />
+            
+            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-10">
+                <div className="space-y-4">
+                    <div className="flex items-center gap-4 mb-2">
+                         <div className="size-14 rounded-2xl bg-primary flex items-center justify-center shadow-2xl shadow-primary/40"><GraduationCap size={28} className="text-white" /></div>
+                         <div className="bg-white/5 border border-white/10 rounded-full px-4 py-1.5 flex items-center gap-2">
+                            <span className="size-1.5 bg-success rounded-full" />
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Broadcast Status: Online</span>
+                         </div>
+                    </div>
+                    <h1 className="text-4xl md:text-6xl font-black tracking-tighter leading-[0.95]">
+                        Facilitate Excellence, <br /><span className="text-gradient">{displayName}</span>
+                    </h1>
+                    <p className="text-text-muted text-sm md:text-base max-w-lg leading-relaxed font-black opacity-60 uppercase tracking-tighter">
+                        Your academic infrastructure is verified. <br />You have <span className="text-text-main opacity-100">{upcomingMeetingsCount} sessions</span> upcoming in the next week.
+                    </p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-4 shrink-0">
+                    <Button onClick={() => { setActiveTab('classes'); setEditingMeeting(null); setTimeout(() => setShowMeetingForm(true), 50); }} size="lg" className="h-16 px-10 rounded-[2rem] gap-3">
+                        <Video size={20} className="fill-white/20" /> Schedule a Class
+                    </Button>
+                    <Button variant="outline" onClick={() => { setActiveTab('classes'); setEditingCourse(null); setTimeout(() => setShowCourseForm(true), 50); }} size="lg" className="h-16 px-10 rounded-[2rem] gap-3">
+                        <BookOpen size={20} /> Create Class
+                    </Button>
+                </div>
+            </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <StatCard label="Active Classes" value={courses.length} icon={BookOpen} description="Operational" />
+          <StatCard label="Learners" value={totalStudentsEnrolled} icon={Users} description="Registry" />
+          <StatCard label="Institutional Revenue" value={`${totalRevenueGenerated.toLocaleString()}`} icon={DollarSign} description="LKR" />
+          <StatCard label="Upcoming Sessions" value={upcomingMeetingsCount} icon={Video} description="Vectored" />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            <div className="lg:col-span-2 space-y-8">
+                <div className="flex items-center justify-between px-2">
+                    <h2 className="font-black text-2xl tracking-tighter uppercase italic">Institutional Feed</h2>
+                    <div className="size-8 rounded-full border-2 border-white/5 flex items-center justify-center"><ChevronRight size={16} className="text-text-muted" /></div>
+                </div>
+                {upcoming.length === 0 ? (
+                    <div className="glass rounded-[2.5rem] p-16 text-center border-dashed border-white/10 group hover:border-primary/20 transition-all">
+                        <div className="size-16 rounded-3xl bg-white/[0.03] flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+                            <Video size={32} className="text-text-muted opacity-20" />
+                        </div>
+                        <p className="text-text-muted text-xs font-black uppercase tracking-[0.3em]">No Broadcasts Identified</p>
+                    </div>
+                ) : (
+                    <div className="space-y-5">
+                        {upcoming.map((m, idx) => {
+                            const dt = new Date(m.scheduledAt);
+                            const isNow = Math.abs(dt.getTime() - now.getTime()) < 30 * 60 * 1000;
+                            return (
+                                <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.1 }} key={m.id} className="glass rounded-[2rem] p-6 flex items-center gap-6 group hover:border-primary/20 transition-all relative overflow-hidden">
+                                    <div className="absolute right-0 top-0 h-full w-1.5 opacity-40" style={{ background: m.courseColor || '#f3184c' }} />
+                                    <div className="size-16 rounded-2xl flex flex-col items-center justify-center shrink-0 shadow-2xl border-4 border-background/20" style={{ background: m.courseColor || '#f3184c' }}>
+                                        <span className="text-[10px] font-black text-white/90 uppercase leading-none mb-1 tracking-tighter">{dt.toLocaleString('default', { month: 'short' })}</span>
+                                        <span className="text-2xl font-black text-white leading-none tracking-tighter">{dt.getDate()}</span>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1 rounded-full">
+                                                <div className="size-2 rounded-full" style={{ background: m.courseColor || '#f3184c' }} />
+                                                <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">{m.courseName}</span>
+                                            </div>
+                                            {isNow && <span className="text-[10px] font-black text-primary animate-pulse tracking-[0.2em] uppercase flex items-center gap-1.5"><div className="size-1.5 bg-primary rounded-full shadow-[0_0_10px_#f3184c]" /> LIVE POINT</span>}
+                                        </div>
+                                        <h3 className="font-black text-xl truncate tracking-tight">{m.title}</h3>
+                                        <div className="flex items-center gap-4 mt-2 opacity-50">
+                                            <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-tighter"><Clock size={14} className="text-primary" /> {dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                            <div className="size-1 bg-white/20 rounded-full" />
+                                            <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-tighter"><Users size={14} className="text-primary" /> Enrolled Students</span>
+                                        </div>
+                                    </div>
+                                    {isNow && m.zoomMeetingId ? (
+                                        <Button onClick={() => startZoomMeeting(m)} className="rounded-2xl px-6 h-12 shadow-lg shadow-primary/30 group-hover:scale-105 transition-all">Launch</Button>
+                                    ) : (
+                                        <div className="size-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-primary/10 group-hover:text-primary transition-all cursor-pointer">
+                                            <ChevronRight size={20} />
+                                        </div>
+                                    )}
+                                </motion.div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+
+            <div className="space-y-8">
+                <h2 className="font-black text-2xl tracking-tighter italic uppercase px-2">My Classes</h2>
+                <div className="space-y-4">
+                    {courses.slice(0, 4).map((c) => (
+                        <div key={c.id} onClick={() => { setSelectedCourse(c); setClassTab('details'); setActiveTab('classes'); }} className="glass rounded-[1.5rem] p-5 flex items-center gap-5 cursor-pointer hover:bg-white/[0.05] hover:border-primary/20 transition-all group">
+                            <div className="relative shrink-0">
+                                <div className="size-14 rounded-2xl ring-4 ring-background overflow-hidden" style={{ background: c.color || '#f3184c' }}>
+                                    {c.imageUrl && <img src={c.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition-all duration-500" alt="" />}
+                                </div>
+                                <div className="absolute -top-1 -right-1 size-5 bg-background rounded-full p-1 flex items-center justify-center border border-white/10 shadow-lg">
+                                    <div className="size-full rounded-full" style={{ background: c.color || '#f3184c' }} />
+                                </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="font-black text-base truncate tracking-tight mb-1">{c.name}</p>
+                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] opacity-40 group-hover:opacity-100 group-hover:text-primary transition-all">Connect Class →</p>
+                            </div>
+                        </div>
+                    ))}
+                    <Button variant="outline" onClick={() => setActiveTab('classes')} className="w-full h-15 rounded-[1.5rem] bg-white/[0.02] border-dashed font-black text-xs space-x-2">
+                        <span>VIEW ALL CLASS PROTOCOLS</span>
+                        <ArrowRight size={14} className="opacity-40" />
+                    </Button>
+                </div>
+            </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  // ── Classes Section ──
+  if (activeTab === 'classes') {
+    if (selectedCourse) {
+      const course = courses.find(c => c.id === selectedCourse.id) || selectedCourse;
+      const meetings = (course.live_classes || []).sort((a: any, b: any) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+      const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const upcomingM = meetings.filter((m: any) => new Date(m.scheduledAt) > twentyFourHoursAgo);
+      const pastM = meetings.filter((m: any) => new Date(m.scheduledAt) <= twentyFourHoursAgo);
+      const enrolledS = students.filter(s => s.moduleId === course.id);
+
+      return (
+        <>
+        <motion.div initial={{ opacity: 0, scale: 0.99 }} animate={{ opacity: 1, scale: 1 }} className="space-y-8">
+          <button onClick={() => setSelectedCourse(null)} className="flex items-center gap-3 text-text-muted hover:text-primary transition-all text-[10px] font-black uppercase tracking-[0.2em] group">
+            <div className="size-8 rounded-xl bg-white/5 flex items-center justify-center group-hover:bg-primary/20"><ArrowLeft size={16} /></div>
+            Class Center
+          </button>
+
+          <div className="relative overflow-hidden rounded-[3rem] bg-surface-2 border border-white/5 p-10 group">
+             <div className="absolute right-0 top-0 h-full w-2 shadow-[0_0_30px_rgba(243,24,76,0.5)]" style={{ background: course.color || '#f3184c' }} />
+             <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-10">
+                <div className="relative shrink-0">
+                    <div className="size-28 rounded-[2rem] overflow-hidden shadow-2xl border-4 border-background/40" style={{ background: course.color || '#f3184c' }}>
+                        {course.imageUrl && <img src={course.imageUrl} className="w-full h-full object-cover" alt="" />}
+                    </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-4 mb-3">
+                        <span className="text-[10px] font-black uppercase tracking-[0.3em] px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-primary">CLASS IDENTITY: {course.id.slice(0, 8)}</span>
+                        <div className={`size-2.5 rounded-full animate-pulse ${course.isActive ? 'bg-success shadow-[0_0_10px_#10b981]' : 'bg-text-muted'}`} />
+                    </div>
+                    <h1 className="text-4xl lg:text-5xl font-black tracking-tighter mb-4">{course.name}</h1>
+                    <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-text-muted opacity-40">Financial:</span>
+                            <span className="lkr-amount font-black text-success text-xl">{Number(course.price).toLocaleString()}</span>
+                        </div>
+                        <div className="size-1 bg-white/10 rounded-full" />
+                        <div className="flex items-center gap-2 text-text-muted">
+                            <Users size={16} className="text-primary" />
+                            <span className="text-sm font-black text-text-main">{enrolledS.length} <span className="text-[10px] uppercase font-black text-text-muted">Active Learners</span></span>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex gap-3 shrink-0 self-end md:self-center">
+                    <button onClick={() => { setEditingCourse(course); setShowCourseForm(true); }} className="size-14 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-primary transition-all group/btn shadow-xl shadow-black/20"><Pencil size={20} className="group-hover:scale-110 transition-transform" /></button>
+                    <button onClick={() => deleteCourse(course.id)} className="size-14 rounded-2xl bg-danger/10 border border-danger/10 text-danger flex items-center justify-center hover:bg-danger hover:text-white transition-all shadow-xl shadow-danger/10"><Trash2 size={20} /></button>
+             </div>
+          </div>
+        </div>
+
+        <Tabs value={classTab} onValueChange={(v: any) => { setClassTab(v); if (v === 'students') fetchStudents(); }} className="w-full">
+            <div className="mb-10 p-2 bg-white/[0.02] border border-white/5 rounded-[2rem] w-fit shadow-2xl shadow-black/20">
+              <TabsList className="bg-transparent border-none p-0 flex items-center gap-6 h-auto w-fit">
+                <TabsTrigger value="meetings" className="px-8 py-3.5 rounded-2xl data-[state=active]:bg-primary data-[state=active]:text-white data-[state=inactive]:opacity-40 transition-all font-black uppercase text-[10px] tracking-[0.25em] shadow-lg data-[state=active]:shadow-primary/30">Live Classes</TabsTrigger>
+                <TabsTrigger value="details" className="px-8 py-3.5 rounded-2xl data-[state=active]:bg-primary data-[state=active]:text-white data-[state=inactive]:opacity-40 transition-all font-black uppercase text-[10px] tracking-[0.25em] shadow-lg data-[state=active]:shadow-primary/30">Class Details</TabsTrigger>
+                <TabsTrigger value="students" className="px-8 py-3.5 rounded-2xl data-[state=active]:bg-primary data-[state=active]:text-white data-[state=inactive]:opacity-40 transition-all font-black uppercase text-[10px] tracking-[0.25em] shadow-lg data-[state=active]:shadow-primary/30">Enrolled Students</TabsTrigger>
+              </TabsList>
+            </div>
+            
+            <AnimatePresence mode="wait">
+              <TabsContent value="details">
+                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass p-10 rounded-[2.5rem] space-y-10 relative overflow-hidden">
+                    <div className="absolute -left-20 -top-20 size-60 bg-primary/5 blur-[80px] rounded-full" />
+                    <div className="relative z-10 space-y-4">
+                        <div className="flex items-center gap-3">
+                            <div className="size-1 bg-primary rounded-full shadow-[0_0_10px_#f3184c]" />
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-text-muted">Mission Description</h3>
+                        </div>
+                        <p className="text-xl font-medium text-text-main/80 leading-relaxed tracking-tight max-w-3xl">{course.description}</p>
+                    </div>
+
+                    <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 pt-10 border-t border-white/5">
+                        <div className="space-y-2">
+                             <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] opacity-40">Protocol Status</p>
+                             <div className="flex items-center gap-2">
+                                <span className={`size-3 rounded-full ${course.isActive ? 'bg-success' : 'bg-text-muted'}`} />
+                                <span className="text-sm font-black uppercase">{course.isActive ? 'Operational' : 'Idle'}</span>
+                             </div>
+                        </div>
+                        <div className="space-y-2">
+                             <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] opacity-40">Access Level</p>
+                             <span className="text-sm font-black uppercase text-primary tracking-widest">Public Institutional</span>
+                        </div>
+                        {course.googleDriveFolderName && (
+                           <div className="sm:col-span-2 space-y-2">
+                                <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] opacity-40">Asset Repository</p>
+                                <div className="flex items-center gap-3 bg-white/5 border border-white/10 px-4 py-2 rounded-xl">
+                                    <BookOpen size={14} className="text-primary" />
+                                    <span className="text-[10px] font-bold font-mono opacity-60">CLASS://ASSETS/{course.googleDriveFolderName}</span>
+                                </div>
+                           </div>
+                        )}
+                    </div>
+                 </motion.div>
+              </TabsContent>
+
+              <TabsContent value="meetings">
+                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+                    <div className="flex items-center justify-between px-2">
+                        <div>
+                            <h3 className="font-black text-xl tracking-tighter">Live Classes</h3>
+                            <p className="text-[10px] font-black text-text-muted uppercase tracking-widest opacity-40 mt-1">Total: {meetings.length} class(es)</p>
+                        </div>
+                        <Button onClick={() => { setEditingMeeting(null); setShowMeetingForm(true); }} className="h-14 px-8 rounded-2xl shadow-xl shadow-primary/20">
+                           <Plus size={16} className="mr-2" strokeWidth={3} /> Schedule Class
+                        </Button>
+                    </div>
+
+                    <div className="space-y-5">
+                       {upcomingM.length === 0 ? (
+                           <div className="glass rounded-[2rem] py-20 text-center border-dashed border-white/10">
+                              <Video size={40} className="text-text-muted opacity-10 mx-auto mb-4" />
+                              <p className="text-text-muted font-black text-xs uppercase tracking-[0.3em]">No Upcoming Logistics</p>
+                           </div>
+                       ) : upcomingM.map((m: any) => {
+                          const dt = new Date(m.scheduledAt);
+                          const isNow = now.getTime() > dt.getTime() - 15 * 60 * 1000 && now.getTime() < dt.getTime() + 24 * 60 * 60 * 1000;
+                          return (
+                             <div key={m.id} className="glass rounded-[2.5rem] p-7 flex items-center justify-between group hover:border-primary/30 transition-all shadow-xl shadow-black/10">
+                                <div className="flex items-center gap-6">
+                                    <div className="size-16 rounded-[1.5rem] bg-white/[0.03] border border-white/5 flex items-center justify-center text-text-muted group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all duration-500 shadow-inner">
+                                        <Video size={28} strokeWidth={1.5} />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <div className="flex items-center gap-3">
+                                            <h4 className="font-black text-xl tracking-tight leading-none">{m.title}</h4>
+                                            {isNow && <span className="bg-primary/20 text-primary text-[9px] font-black uppercase px-2 py-0.5 rounded-lg border border-primary/20 animate-pulse tracking-widest">Active Point</span>}
+                                        </div>
+                                        <p className="text-text-muted text-[10px] font-black uppercase tracking-[0.2em] opacity-40 h-fit leading-none flex items-center gap-2">
+                                           <Clock size={12} className="text-primary" /> {dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} @ {dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                   <div className="flex bg-white/5 border border-white/10 rounded-2xl p-1 gap-1">
+                                        <button onClick={() => { setEditingMeeting(m); setShowMeetingForm(true); }} className="size-10 rounded-xl flex items-center justify-center text-text-muted hover:bg-white/10 hover:text-white transition-all"><Pencil size={16} /></button>
+                                        <button onClick={() => deleteMeeting(m.id)} className="size-10 rounded-xl flex items-center justify-center text-text-muted hover:bg-danger/20 hover:text-danger transition-all"><Trash2 size={16} /></button>
+                                   </div>
+                                   {isNow && m.zoomMeetingId && (
+                                       <Button onClick={() => startZoomMeeting(m)} className="h-12 rounded-2xl px-6 bg-primary text-white shadow-lg shadow-primary/20">Launch Interface</Button>
+                                   )}
+                                </div>
+                             </div>
+                          );
+                       })}
+                    </div>
+
+                    {pastM.length > 0 && (
+                        <div className="pt-6 border-t border-white/5">
+                             <button onClick={() => setShowPastMeetings(!showPastMeetings)} className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted hover:text-primary transition-all flex items-center gap-3 ml-2">
+                               <div className="size-6 rounded-lg bg-white/5 flex items-center justify-center">{showPastMeetings ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</div>
+                               Archived Logs ({pastM.length})
+                             </button>
+                             <AnimatePresence>
+                                {showPastMeetings && (
+                                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mt-6 space-y-3 overflow-hidden ml-4">
+                                        {pastM.map((m: any) => (
+                                            <div key={m.id} className="glass border-white/5 p-4 rounded-2xl flex items-center justify-between text-[11px] font-black uppercase tracking-widest opacity-40 hover:opacity-80 transition-all group">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="size-2 bg-text-muted rounded-full group-hover:bg-primary transition-colors" />
+                                                    <span>{m.title}</span>
+                                                </div>
+                                                <span className="font-mono text-[9px]">{new Date(m.scheduledAt).toLocaleDateString()}</span>
+                                            </div>
+                                        ))}
+                                    </motion.div>
+                                )}
+                             </AnimatePresence>
+                        </div>
+                    )}
+                 </motion.div>
+              </TabsContent>
+
+              <TabsContent value="students">
+                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                    <div className="data-table-container rounded-2xl border border-white/5">
+                        <table className="data-table">
+                            <thead><tr><th>Student</th><th>Email</th><th>Status</th></tr></thead>
+                            <tbody>
+                                {enrolledS.length === 0 ? (
+                                    <tr><td colSpan={3} className="text-center py-24 opacity-30 italic font-black uppercase tracking-[0.3em] text-xs">No Students Enrolled</td></tr>
+                                ) : enrolledS.map((s: any) => (
+                                    <tr key={s.id} className="group hover:bg-white/[0.02]">
+                                        <td>
+                                            <div className="flex items-center gap-4 py-1">
+                                                <div className="size-11 rounded-2xl bg-surface-2 border border-white/10 flex items-center justify-center shrink-0 relative group-hover:scale-105 transition-transform">
+                                                    <UserCheck size={20} className="text-primary opacity-60" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-black text-sm tracking-tight">{s.users?.fullName || s.users?.username}</p>
+                                                    <p className="text-[9px] font-black uppercase text-text-muted opacity-40">Reg: {s.createdAt.slice(0, 10)}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="text-text-muted text-xs font-mono opacity-60 group-hover:opacity-100 transition-opacity uppercase">{s.users?.email}</td>
+                                        <td>
+                                            <div className="flex items-center gap-2">
+                                                <span className={`size-2.5 rounded-full ${s.users?.isActive ? 'bg-success shadow-[0_0_10px_#10b981]' : 'bg-danger shadow-[0_0_10px_#f43f5e]'}`} />
+                                                <span className="text-[10px] font-black uppercase tracking-widest">{s.users?.isActive ? 'Verified' : 'Suspended'}</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                 </motion.div>
+              </TabsContent>
+            </AnimatePresence>
+          </Tabs>
+
+          {showMeetingForm && (
+            <MeetingFormModal
+              courseId={course.id} editing={editingMeeting}
+              onClose={() => { setShowMeetingForm(false); setEditingMeeting(null); }}
+              onSave={async () => { const r = await axios.get('/api/teacher/courses', authHeaders); setCourses(r.data); const updated = r.data.find((c: any) => c.id === course.id); if (updated) setSelectedCourse(updated); }}
+              token={token}
+            />
+          )}
+          {showCourseForm && (
+            <CourseFormModal editing={editingCourse} onClose={() => { setShowCourseForm(false); setEditingCourse(null); }} onSave={fetchCourses} token={token} />
+          )}
+        </motion.div>
+      </>
+    );
+  }
+
+    return (
+      <>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 px-2">
+           <div>
+              <h1 className="text-3xl font-black tracking-tighter">Institutional Classes</h1>
+              <p className="text-text-muted text-sm font-black uppercase tracking-widest opacity-40 mt-1">Manage and update your classroom units</p>
+           </div>
+           <div className="flex gap-4 w-full md:w-auto">
+              <div className="relative group flex-1 md:w-80">
+                 <Search size={20} className="absolute left-6 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors" />
+                 <Input placeholder="Search your classes..." value={search} onChange={e => setSearch(e.target.value)} className="h-14 pl-16 rounded-2xl bg-white/[0.03]" />
+              </div>
+              <button onClick={() => { setEditingCourse(null); setShowCourseForm(true); }} className="h-14 px-8 rounded-2xl bg-primary text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all flex items-center justify-center gap-2 whitespace-nowrap">
+                 <PlusCircle size={18} />
+                 Create Class
+              </button>
+           </div>
+        </div>
+
+        {courses.length === 0 ? (
+           <div className="glass rounded-[3rem] py-32 text-center border-dashed border-white/10">
+               <div className="size-24 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-6">
+                   <BookOpen size={40} className="text-text-muted opacity-20" />
+               </div>
+               <h3 className="text-xl font-black italic tracking-tighter mb-2 opacity-50 uppercase">No active classes found</h3>
+               <p className="text-text-muted text-xs font-black uppercase tracking-[0.3em]">Create your first class to begin</p>
+           </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {courses.filter(c => c.name.toLowerCase().includes(search.toLowerCase())).map((c) => {
+               const paid = c.enrollments?.filter((e: any) => e.status === 'PAID').length || 0;
+               return (
+                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} key={c.id} className="group glass rounded-[2.5rem] p-8 border-white/5 hover:border-primary/30 transition-all shadow-xl hover:shadow-primary/5">
+                    <div className="flex items-start justify-between mb-6">
+                        <div className="size-16 rounded-2xl overflow-hidden bg-white/5 border border-white/5">
+                            {c.imageUrl ? <img src={c.imageUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-primary opacity-20 font-black text-2xl">?</div>}
+                        </div>
+                        <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl border border-white/5">
+                            <div className="size-2 rounded-full animate-pulse" style={{ background: c.color || '#f3184c' }} />
+                            <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">Active Class</span>
+                        </div>
+                    </div>
+
+                    <h3 className="text-xl font-black tracking-tighter mb-2 truncate group-hover:text-primary transition-all uppercase italic">{c.name}</h3>
+                    <p className="text-text-muted text-[11px] line-clamp-2 leading-relaxed opacity-50 mb-8 font-medium h-9">{c.description}</p>
+
+                    <div className="flex items-center justify-between pt-6 border-t border-white/5">
+                        <div className="flex flex-col">
+                             <span className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] opacity-40">Students</span>
+                             <span className="text-sm font-black flex items-center gap-2">
+                                 <Users size={14} className="text-primary" /> {paid} Enrolled
+                             </span>
+                        </div>
+                        <div className="flex gap-2.5">
+                             <button onClick={() => { setSelectedCourse(c); setClassTab('details'); }} className="size-12 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-white/20 transition-all shadow-lg shadow-black/20"><ChevronRight size={20} /></button>
+                             <button onClick={() => { setSelectedCourse(c); setClassTab('meetings'); }} className="size-12 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-primary hover:text-white transition-all shadow-lg shadow-black/20"><Calendar size={18} /></button>
+                        </div>
+                    </div>
+                 </motion.div>
+               );
+            })}
+          </div>
+        )}
+      </motion.div>
+      {showCourseForm && (
+        <CourseFormModal editing={editingCourse} onClose={() => { setShowCourseForm(false); setEditingCourse(null); }} onSave={fetchCourses} token={token} />
+      )}
+      </>
+    );
+  }
+
+  // ── Community / Students Section ──
+  if (activeTab === 'students') {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+        <div className="px-2">
+          <h1 className="text-3xl font-black tracking-tighter">My Students</h1>
+          <p className="text-text-muted text-sm font-black uppercase tracking-widest opacity-40 mt-1">All enrolled students</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+           <div className="md:col-span-3 relative group">
+             <Search size={20} className="absolute left-6 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors" />
+             <Input placeholder="Search learner identities (name, email)..." value={search} onChange={e => setSearch(e.target.value)} className="h-16 pl-16 rounded-[2rem] bg-white/[0.03]" />
+           </div>
+           <div className="h-16 bg-white/[0.03] border border-white/10 rounded-[2rem] px-6 flex items-center relative overflow-hidden group">
+               <select value={studentCourseFilter} onChange={e => setStudentCourseFilter(e.target.value)} className="w-full bg-transparent text-white outline-none font-black text-xs uppercase tracking-widest cursor-pointer relative z-10 appearance-none">
+                 <option value="" className="bg-surface-2">All Active Hubs</option>
+                 {courses.map(c => <option key={c.id} value={c.id} className="bg-surface-2">{c.name.toUpperCase()}</option>)}
+               </select>
+               <ChevronDown size={16} className="absolute right-6 text-text-muted group-hover:text-primary transition-all" />
+           </div>
+        </div>
+
+        {loading ? (
+             <div className="flex justify-center py-24"><div className="size-14 border-[3px] border-primary border-t-transparent rounded-full animate-spin shadow-[0_0_20px_rgba(243,24,76,0.3)]" /></div>
+        ) : (
+          <div className="data-table-container rounded-[2.5rem] border border-white/5 shadow-2xl shadow-black/20">
+            <table className="data-table">
+              <thead><tr><th>Learner</th><th className="hidden lg:table-cell">Identity Vector</th><th>Hub Affiliation</th><th>Protocol Status</th></tr></thead>
+              <tbody>
+                {filteredStudents.length === 0 ? (
+                  <tr><td colSpan={4} className="text-center py-24 font-black opacity-20 uppercase tracking-[0.4em] text-xs italic">Registry Empty</td></tr>
+                ) : filteredStudents.map((s: any) => (
+                  <tr key={s.id} className="group hover:bg-white/[0.015]">
+                    <td>
+                      <div className="flex items-center gap-4 py-2">
+                        <Avatar className="size-11 rounded-2xl ring-2 ring-primary/20">
+                            <AvatarImage src={s.users?.profilePhotoUrl} />
+                            <AvatarFallback>{(s.users?.fullName || s.users?.username || 'U').charAt(0).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                            <span className="font-black text-base tracking-tight">{s.users?.fullName || s.users?.username}</span>
+                            <div className="lg:hidden text-[9px] font-mono text-text-muted opacity-40 uppercase">{s.users?.email}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="hidden lg:table-cell text-text-muted text-xs font-mono font-black opacity-40 group-hover:opacity-100 transition-opacity uppercase tracking-tighter">{s.users?.email}</td>
+                    <td>
+                        <div className="flex items-center gap-2">
+                            <div className="size-1.5 rounded-full bg-primary" />
+                            <span className="text-[10px] font-black uppercase text-text-main opacity-80">{s.modules?.name}</span>
+                        </div>
+                    </td>
+                    <td><span className={`badge ${s.users?.isActive ? 'badge-success shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'badge-danger'}`}>{s.users?.isActive ? 'VERIFIED' : 'SUSPENDED'}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </motion.div>
+    );
+  }
+
+  if (activeTab === 'settings') {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8 max-w-4xl mx-auto py-10">
+        <div className="glass p-12 rounded-[3.5rem] border-white/5 text-center relative overflow-hidden bg-[#0f0405]/40">
+            <div className="absolute -left-20 -bottom-20 size-80 bg-primary/5 blur-[100px] rounded-full" />
+            <div className="relative z-10">
+               <div className="size-24 rounded-[2rem] bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-8 shadow-2xl">
+                   <Avatar className="size-20 rounded-2xl">
+                       <AvatarImage src={user?.profilePhotoUrl} />
+                       <AvatarFallback className="bg-primary/20 text-primary font-black text-2xl uppercase">{(user?.fullName || 'T').charAt(0)}</AvatarFallback>
+                   </Avatar>
+               </div>
+               <h2 className="text-3xl font-black mb-3 uppercase tracking-tighter text-white">Expert Portfolio Handle</h2>
+               <p className="text-text-muted text-[11px] font-black uppercase tracking-[0.3em] opacity-40 mb-10">Verified Institutional Facilitator Identity</p>
+               
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+                   <div className="p-8 rounded-[2rem] bg-white/[0.03] border border-white/10 hover:border-primary/30 transition-all group">
+                       <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3 opacity-40 group-hover:text-primary transition-colors">Expert Identity</p>
+                       <p className="font-black text-xl text-white tracking-widest uppercase truncate">{user?.username}</p>
+                   </div>
+                   <div className="p-8 rounded-[2rem] bg-white/[0.03] border border-white/10 hover:border-primary/30 transition-all group">
+                       <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3 opacity-40 group-hover:text-primary transition-colors">Protocol Access</p>
+                       <p className="font-black text-xl text-primary tracking-widest uppercase">Verified Teacher</p>
+                   </div>
+               </div>
+               <div className="mt-6 p-8 rounded-[2rem] bg-white/[0.02] border border-white/5 text-left flex items-center justify-between group">
+                   <div>
+                       <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-1 opacity-40">Registered Email</p>
+                       <p className="font-bold text-white/80">{user?.email}</p>
+                   </div>
+                   <Button variant="outline" className="rounded-xl border-white/10 h-10 text-[10px] font-black uppercase tracking-widest opacity-60 hover:opacity-100">Request Change</Button>
+               </div>
+            </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] opacity-20 italic font-black uppercase tracking-[0.5em] text-xs">
+        Protocol Idle: No Content Mapped
+    </div>
+  );
+}

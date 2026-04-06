@@ -1,84 +1,168 @@
-@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Lato", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Space Grotesk", ui-monospace, SFMono-Regular, monospace;
-  
-  --color-background: #0f0f0f;
-  --color-surface: #1a1a1a;
-  --color-sidebar: #000000;
-  --color-sidebar-hover: #1f1f1f;
-  --color-primary: #f3184c; /* Vibrant Pink/Red from image */
-  --color-accent: #f3184c;
-  --color-success: #10b981;
-  --color-text-main: #ffffff;
-  --color-text-muted: #a0a0a0;
-  
-  --radius-xl: 24px;
-  --radius-2xl: 32px;
-}
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
-.light {
-  --color-background: #f8fafc;
-  --color-surface: #ffffff;
-  --color-sidebar: #ffffff;
-  --color-sidebar-hover: #f1f5f9;
-  --color-text-main: #0f172a;
-  --color-text-muted: #64748b;
+  /* Tailwind 4 Core Theme Mapping */
+  --color-background: #0d0d0e;
+  --color-foreground: #ffffff;
+  
+  --color-primary: #f3184c;
+  --color-primary-foreground: #ffffff;
+  
+  --color-secondary: #0f0405;
+  --color-secondary-foreground: #ffffff;
+  
+  --color-muted: #1a1a1c;
+  --color-muted-foreground: #8e8e93;
+  
+  --color-accent: #f3184c;
+  --color-accent-foreground: #ffffff;
+  
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  
+  --color-border: #1a1a1c;
+  --color-input: #1a1a1c;
+  --color-ring: #f3184c;
+
+  /* Custom Functional Colors */
+  --color-surface: #1a1a1c;
+  --color-surface-2: #242426;
+  --color-text-main: #ffffff;
+  --color-text-muted: #8e8e93;
+  --color-danger: #ef4444;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-sidebar: #120305;
+
+  /* Radius System */
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+
+  /* Animations - Static for Premium administrative UX */
+  @keyframes shake {
+    10%, 90% { transform: translate3d(-1px, 0, 0); }
+    20%, 80% { transform: translate3d(2px, 0, 0); }
+    30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+    40%, 60% { transform: translate3d(4px, 0, 0); }
+  }
 }
 
 @layer base {
-  body {
-    @apply bg-background text-text-main antialiased font-sans;
+  * {
+    border-color: var(--color-border);
   }
-  
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-sans font-bold tracking-tight;
+  body {
+    background: radial-gradient(circle at top center, #1a1a1c 0%, #0d0d0e 100%);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.015em;
+    min-height: 100vh;
+  }
+}
+@utility glass {
+  background: rgba(26,26,28,0.7);
+  border: 1px solid rgba(255,255,255,0.06);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+@utility text-gradient {
+  background: linear-gradient(135deg, #f3184c 0%, #ff527b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Dashboard Navigation ─── */
+@layer components {
+  .sidebar-item {
+    @apply flex items-center gap-3 w-full px-4 py-3 rounded-2xl text-text-muted font-black text-sm transition-all hover:bg-white/5 cursor-pointer;
+  }
+
+  .sidebar-item.active {
+    @apply bg-primary/10 text-primary border border-primary/20 shadow-lg shadow-primary/5;
+  }
+
+  .mobile-nav {
+    @apply fixed bottom-0 left-0 right-0 h-18 bg-[#120305] backdrop-blur-xl border-t border-white/5 flex items-center justify-around px-2 z-50 md:hidden;
+  }
+
+  .mobile-nav-item {
+    @apply flex flex-col items-center justify-center gap-1.5 flex-1 h-full text-text-muted transition-all relative;
+  }
+
+  .mobile-nav-item span {
+    @apply text-[9px] font-black uppercase tracking-widest leading-none;
+  }
+
+  .mobile-nav-item.active {
+    @apply text-primary;
+  }
+
+  /* ─── Modern Tables ─── */
+  .data-table-container {
+    @apply w-full overflow-x-auto bg-surface-2 border border-white/5 shadow-2xl;
+  }
+
+  .data-table {
+    @apply w-full text-left border-collapse min-w-[600px];
+  }
+
+  .data-table th {
+    @apply px-6 py-5 text-[10px] font-black text-text-muted uppercase tracking-[0.2em] border-b border-white/5 opacity-60;
   }
 }
 
-@layer utilities {
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-black/10 rounded-full;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    @apply bg-black/20;
-  }
+.data-table td {
+  @apply px-6 py-5 text-sm font-semibold border-b border-white/[0.03] align-middle;
+}
 
-  .glass {
-    @apply bg-white shadow-sm border border-black/5 backdrop-blur-sm;
-  }
-  
-  .glass-dark {
-    @apply bg-sidebar/80 backdrop-blur-2xl border border-white/5;
-  }
+.data-table tr:hover td {
+  @apply bg-white/[0.01];
+}
 
-  .card-shadow {
-    box-shadow: 0 10px 30px -10px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.02);
-  }
+/* ─── Interactive Components ─── */
+.badge {
+  @apply inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border;
+}
 
-  .shadow-bento {
-    box-shadow: 0 0 0 1px rgba(0,0,0,0.03), 0 2px 4px rgba(0,0,0,0.02), 0 12px 24px rgba(0,0,0,0.03);
-  }
+.badge-success { @apply bg-success/10 text-success border-success/20; }
+.badge-danger { @apply bg-danger/10 text-danger border-danger/20; }
+.badge-warning { @apply bg-warning/10 text-warning border-warning/20; }
+.badge-muted { @apply bg-white/5 text-text-muted border-white/10; }
 
-  .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
-  }
+.modal-overlay {
+  @apply fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md;
+}
 
-  @keyframes float {
-    0% { transform: translateY(0px); }
-    50% { transform: translateY(-10px); }
-    100% { transform: translateY(0px); }
-  }
+.modal-box {
+  @apply glass w-full max-w-lg rounded-[2.5rem] p-8 shadow-2xl border-white/10 relative overflow-hidden;
+}
 
-  .animate-float {
-    animation: float 6s ease-in-out infinite;
-  }
+/* Currency and Layout */
+.lkr-amount::before {
+  content: "Rs. ";
+  @apply text-[10px] font-black uppercase tracking-tighter opacity-40 mr-1;
+}
+
+.custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.05);
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(243,24,76,0.2); }
+
+/* Fix Login Footer Colors */
+.login-footer-links a {
+  @apply text-white hover:underline transition-colors no-underline;
 }
