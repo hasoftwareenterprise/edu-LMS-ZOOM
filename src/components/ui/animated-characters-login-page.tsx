@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Eye, EyeOff, Mail, Sparkles } from "lucide-react";
+import { Eye, EyeOff, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
@@ -531,17 +531,6 @@ function LoginPage({ onLogin, onSignupClick }: LoginPageProps) {
               {isLoading ? "Signing in..." : "Log in"}
             </Button>
           </form>
-
-          <div className="mt-8 border-t border-white/5 pt-8">
-            <Button 
-              variant="outline" 
-              className="w-full h-12 bg-transparent border-white/10 hover:bg-white/5 text-white font-medium rounded-xl"
-              type="button"
-            >
-              <Mail className="mr-2 size-5" />
-              Log in with Google
-            </Button>
-          </div>
 
           <div className="text-center mt-10">
             <p className="text-text-muted text-sm font-medium">

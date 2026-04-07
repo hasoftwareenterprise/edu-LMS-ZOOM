@@ -33,7 +33,7 @@ async function bootstrapUsers() {
   const adminEmail = (process.env.ADMIN_EMAIL || "admin@mail.com").trim();
   const adminPassword = (process.env.ADMIN_PASSWORD || "admin@123").trim();
 
-  await prisma.users.deleteMany({ where: { OR: [{ email: adminEmail }, { username: "admin" }] } }).catch(() => {});
+  await prisma.users.deleteMany({ where: { OR: [{ email: adminEmail }, { username: "admin" }] } }).catch(() => { });
 
   const testUsers = [
     { email: adminEmail, username: "admin", password: adminPassword, role: users_role.ADMIN, fullName: "System Admin", approvalStatus: teacher_approval_status.APPROVED },
@@ -100,11 +100,11 @@ async function bootstrapUsers() {
         console.log(`[BOOTSTRAP] User ${user.email} exists. Updating credentials...`);
         await prisma.users.update({
           where: { id: existing.id },
-          data: { 
-            password: hashedPassword, 
-            role: user.role, 
+          data: {
+            password: hashedPassword,
+            role: user.role,
             approvalStatus: user.approvalStatus,
-            fullName: user.fullName 
+            fullName: user.fullName
           } as any
         });
         console.log(`[BOOTSTRAP] Successfully updated user: ${user.email}`);
@@ -782,16 +782,25 @@ app.post("/api/zoom/signature", verifySession, (req, res) => {
 app.get("/api/admin/stats", verifySession, async (req: any, res) => {
   if (req.user.role !== users_role.ADMIN) return res.status(403).json({ message: "Forbidden" });
   try {
-    const [totalStudents, approvedTeachers, pendingTeachers, activeModules, totalEnrollments] = await Promise.all([
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [totalStudents, approvedTeachers, pendingTeachers, activeModules, totalEnrollments, purchasesThisMonth] = await Promise.all([
       (prisma.users as any).count({ where: { role: users_role.STUDENT, isActive: true } }),
       (prisma.users as any).count({ where: { role: users_role.TEACHER, approvalStatus: "APPROVED" } }),
       (prisma.users as any).count({ where: { role: users_role.TEACHER, approvalStatus: "PENDING" } }),
       prisma.modules.count({ where: { isActive: true } }),
       prisma.enrollments.count({ where: { status: "PAID" } }),
+      prisma.enrollments.count({
+        where: {
+          status: "PAID",
+          paidAt: { gte: firstDayOfMonth }
+        }
+      }),
     ]);
     const revenueData = await prisma.enrollments.findMany({ where: { status: "PAID" }, select: { amount: true } });
     const totalRevenue = revenueData.reduce((sum, e) => sum + Number(e.amount), 0);
-    res.json({ totalStudents, approvedTeachers, pendingTeachers, activeModules, totalEnrollments, totalRevenue });
+    res.json({ totalStudents, approvedTeachers, pendingTeachers, activeModules, totalEnrollments, totalRevenue, purchasesThisMonth });
   } catch (err) { console.error("Admin stats error:", err); res.status(500).json({ message: "Error fetching stats" }); }
 });
 
@@ -860,6 +869,23 @@ app.put("/api/admin/users/:id/toggle", verifySession, async (req: any, res) => {
   } catch (err) { res.status(500).json({ message: "Error toggling user" }); }
 });
 
+// Admin: Edit any user (Override Protocol)
+app.put("/api/admin/users/:id", verifySession, async (req: any, res) => {
+  if (req.user.role !== users_role.ADMIN) return res.status(403).json({ message: "Forbidden" });
+  try {
+    const { id } = req.params;
+    const updateData = { ...req.body, updatedAt: new Date() };
+    delete updateData.password; // Don't allow password update here for security
+    delete updateData.id;
+
+    const updated = await (prisma.users as any).update({
+      where: { id },
+      data: updateData
+    });
+    res.json(updated);
+  } catch (err) { res.status(500).json({ message: "Error updating user core" }); }
+});
+
 // Admin: Delete user
 app.delete("/api/admin/users/:id", verifySession, async (req: any, res) => {
   if (req.user.role !== users_role.ADMIN) return res.status(403).json({ message: "Forbidden" });
@@ -876,13 +902,39 @@ app.get("/api/admin/courses", verifySession, async (req: any, res) => {
     const courses = await prisma.modules.findMany({
       include: {
         users: { select: { id: true, fullName: true, email: true, username: true } as any },
-        enrollments: { select: { id: true, status: true, amount: true } },
-        live_classes: { select: { id: true, title: true, scheduledAt: true, status: true } }
+        enrollments: { include: { users: { select: { fullName: true, username: true, email: true } as any } } } as any,
+        live_classes: { orderBy: { scheduledAt: 'asc' } }
       },
       orderBy: { createdAt: 'desc' }
     });
     res.json(courses);
   } catch (err) { res.status(500).json({ message: "Error fetching courses" }); }
+});
+
+// Admin: Update course attributes
+app.put("/api/admin/courses/:id", verifySession, async (req: any, res) => {
+  if (req.user.role !== users_role.ADMIN) return res.status(403).json({ message: "Forbidden" });
+  try {
+    const { id } = req.params;
+    const updateData = { ...req.body, updatedAt: new Date() };
+    delete updateData.id;
+
+    const updated = await prisma.modules.update({
+      where: { id },
+      data: updateData
+    });
+    res.json(updated);
+  } catch (err) { res.status(500).json({ message: "Error updating course node" }); }
+});
+
+// Admin: Delete course
+app.delete("/api/admin/courses/:id", verifySession, async (req: any, res) => {
+  if (req.user.role !== users_role.ADMIN) return res.status(403).json({ message: "Forbidden" });
+  try {
+    const { id } = req.params;
+    await prisma.modules.delete({ where: { id } });
+    res.json({ message: "Course deleted" });
+  } catch (err) { res.status(500).json({ message: "Error deleting course" }); }
 });
 
 // Admin: Get purchase logs
@@ -894,7 +946,8 @@ app.get("/api/admin/purchases", verifySession, async (req: any, res) => {
       include: {
         users: { select: { id: true, email: true, fullName: true, username: true } as any },
         modules: {
-          select: { id: true, name: true, price: true,
+          select: {
+            id: true, name: true, price: true,
             users: { select: { id: true, fullName: true, email: true } as any }
           }
         }
@@ -980,7 +1033,7 @@ app.get("/api/student/available-modules", verifySession, async (req: any, res) =
     })).map(e => e.moduleId);
 
     const modules = await prisma.modules.findMany({
-      where: { 
+      where: {
         isActive: true,
         ...(enrolledIds.length > 0 ? { id: { notIn: enrolledIds } } : {})
       },
@@ -1091,7 +1144,7 @@ async function startServer() {
 
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
-      server: { 
+      server: {
         middlewareMode: true,
         allowedHosts: true,
       },

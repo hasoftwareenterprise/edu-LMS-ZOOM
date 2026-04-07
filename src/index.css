@@ -94,11 +94,147 @@
   -webkit-backdrop-filter: blur(24px);
 }
 
-@utility text-gradient {
-  background: linear-gradient(135deg, #f3184c 0%, #ff527b 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+@utility institutional-pattern {
+  background-image: repeating-radial-gradient(circle,
+      #000000,
+      #000000 5px,
+      transparent 6px);
+  background-size: 20px 20px;
+}
+
+@utility institutional-sidebar-gradient {
+  background: linear-gradient(180deg, rgba(243, 24, 76, 0.45) 0%, rgba(36, 8, 12, 0.98) 45%, #1a0507 100%);
+}
+
+@utility institutional-radio-inputs {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  border-radius: 1rem;
+  background-color: rgba(26, 5, 7, 0.4);
+  backdrop-filter: blur(8px);
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 0.35rem;
+  width: fit-content;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+
+@utility institutional-radio {
+  flex: 1 1 auto;
+  text-align: center;
+}
+
+@utility institutional-radio-input {
+  display: none;
+}
+
+@utility institutional-radio-name {
+  display: flex;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  color: rgba(255, 255, 255, 0.4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.institutional-radio-input:checked+.institutional-radio-name {
+  background-color: #f3184c;
+  color: #fff;
+  box-shadow: 0 10px 20px -5px rgba(243, 24, 76, 0.4);
+}
+
+/* ─── Institutional Entry Button ─── */
+@utility entry-button-animated {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 32px;
+  height: 56px;
+  border: none;
+  font-size: 11px;
+  background-color: #f3184c;
+  border-radius: 1rem;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 0.3em;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+  text-transform: uppercase;
+  box-shadow: 0 10px 30px -10px rgba(243, 24, 76, 0.5);
+}
+
+.entry-button-animated svg {
+  position: absolute;
+  width: 20px;
+  fill: #fff;
+  z-index: 9;
+  transition: all 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.entry-button-animated .arr-1 {
+  right: 16px;
+}
+
+.entry-button-animated .arr-2 {
+  left: -25%;
+}
+
+.entry-button-animated .circle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  opacity: 0;
+  transition: all 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.entry-button-animated .text {
+  position: relative;
+  z-index: 1;
+  transform: translateX(-12px);
+  transition: all 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.entry-button-animated:hover {
+  box-shadow: 0 0 0 0px transparent;
+  transform: translateY(-2px);
+  background-color: #ff3864;
+}
+
+.entry-button-animated:hover .arr-1 {
+  right: -25%;
+}
+
+.entry-button-animated:hover .arr-2 {
+  left: 16px;
+}
+
+.entry-button-animated:hover .text {
+  transform: translateX(12px);
+}
+
+.entry-button-animated:active {
+  scale: 0.95;
+}
+
+.entry-button-animated:hover .circle {
+  width: 300px;
+  height: 300px;
+  opacity: 1;
 }
 
 /* ─── Modern Ripple Animation (Header Only) ─── */
@@ -849,14 +985,14 @@
   border-radius: 2rem;
   padding: 2.5rem;
   box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5),
-              inset 0 0 20px rgba(243, 24, 76, 0.05);
+    inset 0 0 20px rgba(243, 24, 76, 0.05);
   transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .protocol-card:hover {
   border-color: rgba(243, 24, 76, 0.4);
   box-shadow: 0 30px 60px -12px rgba(243, 24, 76, 0.1),
-              0 20px 40px -10px rgba(0, 0, 0, 0.5);
+    0 20px 40px -10px rgba(0, 0, 0, 0.5);
   transform: translateY(-4px);
 }
 
@@ -931,10 +1067,9 @@
   transform: translateX(-50%);
   width: 60%;
   height: 1px;
-  background: linear-gradient(90deg, 
-    transparent, 
-    rgba(243, 24, 76, 0.8), 
-    transparent
-  );
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(243, 24, 76, 0.8),
+      transparent);
   filter: blur(2px);
 }

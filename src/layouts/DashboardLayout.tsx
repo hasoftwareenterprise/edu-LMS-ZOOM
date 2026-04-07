@@ -96,7 +96,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     <div className="flex h-screen bg-background text-text-main overflow-hidden font-sans">
 
       {/* ── Desktop Sidebar ── */}
-      <aside className={`hidden md:flex flex-col py-8 relative z-20 transition-all duration-300 ease-in-out border-r border-white/5 bg-[#1a0507]
+      <aside className={`hidden md:flex flex-col py-8 relative z-20 transition-all duration-300 ease-in-out border-r border-white/5 
+          ${(user?.role === 'TEACHER' || user?.role === 'STUDENT') ? 'institutional-sidebar-gradient' : 'bg-[#1a0507]'}
           ${collapsed ? 'w-[88px]' : 'w-[280px]'}`}>
 
         {/* Logo + Toggle */}
@@ -133,23 +134,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
         {/* Footer */}
         <div className="px-3 mt-4 pt-4 border-t border-white/5 flex flex-col gap-1.5">
-          {!collapsed && (
-            <div className="flex items-center gap-3 px-3 py-2.5 mb-2 bg-white/[0.02] border border-white/5 rounded-2xl">
-              <div className="relative shrink-0">
-                <Avatar className="size-8 rounded-lg ring-2 ring-primary/20">
-                  <AvatarImage src={user?.profilePhotoUrl} />
-                  <AvatarFallback className="bg-primary/20 text-primary font-black text-[10px]">{displayName.charAt(0).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div className="absolute -top-1 -right-1 size-3.5 bg-primary rounded-full flex items-center justify-center border-2 border-background shadow-lg shadow-primary/20">
-                  <Verified className="size-2 text-white" />
-                </div>
-              </div>
-              <div className="overflow-hidden">
-                <p className="font-black text-[10px] truncate text-white tracking-widest uppercase">{displayName}</p>
-                <p className={`${roleColor} text-[7px] font-black px-1.5 py-0.5 rounded-md w-fit uppercase tracking-widest mt-0.5`}>{getRoleLabel(user?.role)}</p>
-              </div>
-            </div>
-          )}
           <button
             onClick={onLogout}
             title={collapsed ? 'Logout' : undefined}
@@ -173,7 +157,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <motion.aside
               initial={{ x: -260 }} animate={{ x: 0 }} exit={{ x: -260 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="fixed inset-y-0 left-0 w-64 bg-sidebar border-r border-border z-40 md:hidden flex flex-col py-6"
+              className={`fixed inset-y-0 left-0 w-64 border-r border-border z-40 md:hidden flex flex-col py-6 ${(user?.role === 'TEACHER' || user?.role === 'STUDENT') ? 'institutional-sidebar-gradient' : 'bg-sidebar'}`}
             >
               <div className="flex items-center justify-between px-4 mb-8">
                 <div className="flex items-center gap-2.5">
@@ -198,19 +182,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 ))}
               </nav>
               <div className="px-2 mt-4 pt-4 border-t border-border">
-                <div className="flex items-center gap-3 px-3 py-3 mb-2 bg-white/[0.03] border border-white/5 rounded-2xl mx-1">
-                  <div className="relative shrink-0">
-                    <Avatar className="size-10 rounded-xl ring-2 ring-primary/20">
-                      <AvatarImage src={user?.profilePhotoUrl} />
-                      <AvatarFallback>{displayName.charAt(0).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div className="absolute -top-1 -right-1 size-4 bg-primary rounded-full flex items-center justify-center border-2 border-sidebar shadow-[0_0_10px_rgba(243,24,76,0.5)]">
-                      <Verified className="size-2.5 text-white" />
-                    </div>
-                    <p className="text-[9px] font-black uppercase text-text-muted opacity-40">Joined: {user?.createdAt?.slice(0, 10)}</p>
-                    <p className={`${roleColor} text-[9px] font-black px-2 py-0.5 rounded-lg w-fit uppercase tracking-widest`}>{getRoleLabel(user?.role)}</p>
-                  </div>
-                </div>
                 <button onClick={onLogout} className="sidebar-item w-full hover:text-danger hover:bg-danger/10">
                   <LogOut size={18} /> <span>Logout</span>
                 </button>

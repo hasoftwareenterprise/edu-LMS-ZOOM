@@ -193,7 +193,16 @@ export default function StudentDashboard({ user, dashboardData, startZoomMeeting
                         <p className="text-xs font-black text-text-muted uppercase tracking-widest mt-2">{dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} &bull; Active Node</p>
                       </div>
                       {isNow && m.zoomMeetingId ? (
-                        <Button onClick={() => startZoomMeeting(m)} className="rounded-2xl h-12 shadow-xl shadow-primary/20 bg-primary">Join Now</Button>
+                        <button onClick={() => startZoomMeeting(m)} className="entry-button-animated h-12 !px-8 h-12 shadow-xl shadow-primary/20">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="arr-2" viewBox="0 0 24 24">
+                            <path d="M16.1716 10.9999L10.8076 5.63589L12.2218 4.22168L20 11.9999L12.2218 19.778L10.8076 18.3638L16.1716 12.9999H4V10.9999H16.1716Z" />
+                          </svg>
+                          <span className="text italic">E N T R Y</span>
+                          <span className="circle"></span>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="arr-1" viewBox="0 0 24 24">
+                            <path d="M16.1716 10.9999L10.8076 5.63589L12.2218 4.22168L20 11.9999L12.2218 19.778L10.8076 18.3638L16.1716 12.9999H4V10.9999H16.1716Z" />
+                          </svg>
+                        </button>
                       ) : (
                         <div className="size-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-primary/10 group-hover:text-primary transition-all cursor-pointer"><ChevronRight size={20} /></div>
                       )}
@@ -252,9 +261,18 @@ export default function StudentDashboard({ user, dashboardData, startZoomMeeting
                 <button onClick={() => setSelectedCourse(null)} className="size-14 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-primary transition-all group shrink-0"><ArrowLeft size={24} className="group-hover:-translate-x-1 transition-transform" /></button>
                 <div className="min-w-0"><div className="flex items-center gap-3 mb-2"><div className="size-2 rounded-full shadow-[0_0_8px_#f3184c]" style={{ background: selectedCourse.color || '#f3184c' }} /><p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted opacity-40">Class ID: {selectedCourse.id.slice(0, 12)}</p></div><h2 className="text-3xl md:text-5xl font-black tracking-tighter uppercase italic truncate">{selectedCourse.name}</h2></div>
               </div>
-              <div className="flex items-center gap-2 bg-black/40 p-1.5 rounded-2xl border border-white/5 w-fit shrink-0">
+              <div className="institutional-radio-inputs shadow-2xl shadow-black/40">
                 {['vectors', 'hub'].map(tab => (
-                  <button key={tab} onClick={() => setClassTab(tab as any)} className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${classTab === tab ? 'bg-primary text-white shadow-xl shadow-primary/20' : 'text-text-muted hover:text-white hover:bg-white/5'}`}>{tab === 'vectors' ? 'Live Classes' : 'Class Info'}</button>
+                  <label key={tab} className="institutional-radio">
+                    <input
+                      type="radio"
+                      name="classTab"
+                      checked={classTab === tab}
+                      onChange={() => setClassTab(tab as any)}
+                      className="institutional-radio-input"
+                    />
+                    <span className="institutional-radio-name italic tracking-widest">{tab === 'vectors' ? 'Live Classes' : 'Class Info'}</span>
+                  </label>
                 ))}
               </div>
             </div>
@@ -273,7 +291,27 @@ export default function StudentDashboard({ user, dashboardData, startZoomMeeting
                             <div><p className="font-black text-xl uppercase tracking-tight mb-2 group-hover:text-primary transition-colors">{m.topic}</p><div className="flex flex-wrap items-center gap-6"><div className="flex items-center gap-2"><Clock size={14} className="text-primary opacity-60" /><span className="text-[11px] font-black text-text-muted uppercase tracking-widest italic">{new Date(m.scheduledAt).toLocaleString()}</span></div><div className="flex items-center gap-2"><Zap size={14} className="text-warning opacity-60" /><span className="text-[11px] font-black text-text-muted uppercase tracking-widest italic">{m.duration || 60} Min Node</span></div></div></div>
                           </div>
                           <div className="flex items-center gap-4 min-w-[220px]">
-                            {isLive ? (<button onClick={() => startZoomMeeting(m)} className="w-full h-14 rounded-2xl bg-primary text-white text-[10px] font-black uppercase tracking-[0.4em] shadow-xl shadow-primary/30 hover:scale-[1.03] active:scale-95 transition-all flex items-center justify-center gap-4 animate-pulse"><PlayCircle size={20} /> Establish Vector</button>) : isPast ? (<div className="w-full h-14 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center gap-2 opacity-60"><span className="text-[10px] font-black text-text-muted uppercase tracking-[0.3em] italic">Archived Class</span></div>) : (<div className="w-full h-14 rounded-2xl bg-warning/5 border border-warning/10 flex items-center justify-center gap-3"><Clock size={16} className="text-warning animate-pulse" /><span className="text-[10px] font-black text-warning uppercase tracking-[0.3em] italic">Awaiting Sync</span></div>)}
+                            {isLive ? (
+                              <button onClick={() => startZoomMeeting(m)} className="entry-button-animated w-full">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="arr-2" viewBox="0 0 24 24">
+                                  <path d="M16.1716 10.9999L10.8076 5.63589L12.2218 4.22168L20 11.9999L12.2218 19.778L10.8076 18.3638L16.1716 12.9999H4V10.9999H16.1716Z" />
+                                </svg>
+                                <span className="text italic">E N T R Y</span>
+                                <span className="circle"></span>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="arr-1" viewBox="0 0 24 24">
+                                  <path d="M16.1716 10.9999L10.8076 5.63589L12.2218 4.22168L20 11.9999L12.2218 19.778L10.8076 18.3638L16.1716 12.9999H4V10.9999H16.1716Z" />
+                                </svg>
+                              </button>
+                            ) : isPast ? (
+                              <div className="w-full h-14 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center gap-2 opacity-60">
+                                <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.3em] italic">Archived Class</span>
+                              </div>
+                            ) : (
+                              <div className="w-full h-14 rounded-2xl bg-warning/5 border border-warning/10 flex items-center justify-center gap-3">
+                                <Clock size={16} className="text-warning animate-pulse" />
+                                <span className="text-[10px] font-black text-warning uppercase tracking-[0.3em] italic">Awaiting Sync</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -283,7 +321,7 @@ export default function StudentDashboard({ user, dashboardData, startZoomMeeting
                 </motion.div>
               )}
               {classTab === 'hub' && (
-                <motion.div key="hub" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-12 relative z-10 pt-4"><div className="grid grid-cols-1 lg:grid-cols-3 gap-12"><div className="lg:col-span-2 space-y-8"><div className="space-y-4"><h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary italic">Intelligence Summary</h4><p className="text-xl font-medium leading-relaxed text-white/80 tracking-tight">{selectedCourse.description}</p></div><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div className="glass p-8 rounded-[2rem] border-white/5 flex flex-col gap-4"><Award size={24} className="text-primary" /><div><p className="text-[9px] font-black text-text-muted uppercase tracking-widest opacity-40 mb-1">Certification</p><p className="text-sm font-black uppercase tracking-tight">Institutional Merit</p></div></div><div className="glass p-8 rounded-[2rem] border-white/5 flex flex-col gap-4"><Users size={24} className="text-success" /><div><p className="text-[9px] font-black text-text-muted uppercase tracking-widest opacity-40 mb-1">Scholar Density</p><p className="text-sm font-black uppercase tracking-tight">Vectored Access Active</p></div></div></div></div><div className="space-y-8"><h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary italic">Primary Facilitator</h4><div className="glass p-10 rounded-[2.5rem] border-white/10 text-center relative overflow-hidden group"><div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent z-0 opacity-0 group-hover:opacity-100 transition-opacity" /><Avatar className="size-24 rounded-[2rem] border-4 border-background/50 ring-4 ring-primary/20 mx-auto mb-6 relative z-10 shadow-2xl"><AvatarImage src={selectedCourse.teachers?.profilePhotoUrl} /><AvatarFallback className="bg-primary/20 text-primary uppercase font-black text-2xl">{(selectedCourse.teachers?.fullName || 'T').charAt(0)}</AvatarFallback></Avatar><div className="relative z-10"><p className="font-black text-xl uppercase tracking-tighter mb-1 text-white">{selectedCourse.teachers?.fullName || selectedCourse.teachers?.username}</p><p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted opacity-40 mb-6">Master Instructor</p><button className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-[0.4em] hover:bg-white/10 transition-all group-hover:bg-primary transition-all">Direct Intelligence Hub</button></div></div></div></div></motion.div>
+                <motion.div key="hub" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-12 relative z-10 pt-4"><div className="grid grid-cols-1 lg:grid-cols-3 gap-12"><div className="lg:col-span-2 space-y-8"><div className="space-y-4"><h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary italic">Intelligence Summary</h4><p className="text-xl font-medium leading-relaxed text-white/80 tracking-tight">{selectedCourse.description}</p></div><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div className="glass p-8 rounded-[2rem] border-white/5 flex flex-col gap-4"><Award size={24} className="text-primary" /><div><p className="text-[9px] font-black text-text-muted uppercase tracking-widest opacity-40 mb-1">Certification</p><p className="text-sm font-black uppercase tracking-tight">Institutional Merit</p></div></div><div className="glass p-8 rounded-[2rem] border-white/5 flex flex-col gap-4"><Users size={24} className="text-success" /><div><p className="text-[9px] font-black text-text-muted uppercase tracking-widest opacity-40 mb-1">Scholar Density</p><p className="text-sm font-black uppercase tracking-tight">Vectored Access Active</p></div></div></div></div><div className="space-y-8"><h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary italic">Primary Facilitator</h4><div className="glass p-10 rounded-[2.5rem] border-white/10 text-center relative overflow-hidden group"><div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent z-0 opacity-0 group-hover:opacity-100 transition-opacity" /><Avatar className="size-24 rounded-[2rem] border-4 border-background/50 ring-4 ring-primary/20 mx-auto mb-6 relative z-10 shadow-2xl"><AvatarImage src={selectedCourse.teachers?.profilePhotoUrl} /><AvatarFallback className="bg-primary/20 text-primary uppercase font-black text-2xl">{(selectedCourse.teachers?.fullName || 'T').charAt(0)}</AvatarFallback></Avatar><div className="relative z-10"><p className="font-black text-xl uppercase tracking-tighter mb-1 text-white">{selectedCourse.teachers?.fullName || selectedCourse.teachers?.username}</p><p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted opacity-40 mb-0">Master Instructor</p></div></div></div></div></motion.div>
               )}
             </AnimatePresence>
           </div>
@@ -292,7 +330,7 @@ export default function StudentDashboard({ user, dashboardData, startZoomMeeting
     }
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 px-2"><div><h1 className="text-4xl font-black tracking-tighter uppercase italic">My Classes</h1><p className="text-text-muted text-[10px] font-black uppercase tracking-[0.3em] opacity-40 mt-2">Active Institutional Access Tokens</p></div><div className="relative group w-full md:w-auto md:min-w-[320px]"><Search size={18} className="absolute left-6 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors" /><Input placeholder="Filter units..." value={search} onChange={e => setSearch(e.target.value)} className="h-14 pl-14 rounded-2xl bg-white/5 border-white/10 focus:border-primary/40" /></div></div>
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 px-2"><div><h1 className="text-4xl font-black tracking-tighter uppercase italic">My Classes</h1><p className="text-text-muted text-[10px] font-black uppercase tracking-[0.3em] opacity-40 mt-2">Active Institutional Access Tokens</p></div><div className="relative group w-full md:w-auto md:min-w-[320px]"><Search size={18} className="absolute left-6 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors" /><Input placeholder="Filter units..." value={search} onChange={e => setSearch(e.target.value)} className="h-14 pl-14 text-center rounded-2xl bg-white/5 border-white/10 focus:border-primary/40" /></div></div>
         {loading ? (<div className="flex justify-center py-24"><div className="size-14 border-[3px] border-primary border-t-transparent rounded-full animate-spin shadow-[0_0_20px_rgba(243,24,76,0.3)]" /></div>) : courses.length === 0 ? (
           <div className="glass rounded-[3rem] py-32 text-center border-dashed border-white/10 group"><div className="size-24 rounded-3xl bg-white/[0.03] border border-white/10 flex items-center justify-center mx-auto mb-8 group-hover:scale-110 transition-all duration-500"><Package size={48} className="text-primary opacity-10 group-hover:opacity-40 transition-opacity" /></div><h2 className="text-2xl font-black tracking-tighter mb-2 uppercase italic">Registry Empty</h2><p className="text-text-muted text-[10px] max-w-sm mx-auto mb-10 font-black leading-relaxed opacity-40 uppercase tracking-widest italic">No active class protocols detected. Initialize discovery to begin.</p><Button onClick={() => setActiveTab('explore')} className="bg-primary px-10 h-14 rounded-2xl font-black uppercase tracking-[0.3em] text-[10px]">Launch Discovery Hub</Button></div>
         ) : (

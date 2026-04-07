@@ -517,33 +517,33 @@ export default function TeacherDashboard({ user, dashboardData, startZoomMeeting
 
             <div className="w-full">
               <div className="mb-10 premium-tabs">
-                <input 
-                  type="radio" 
-                  name="class-tabs" 
-                  id="tab-1" 
-                  className="premium-tab-radio" 
-                  checked={classTab === 'meetings'} 
-                  onChange={() => setClassTab('meetings')} 
+                <input
+                  type="radio"
+                  name="class-tabs"
+                  id="tab-1"
+                  className="premium-tab-radio"
+                  checked={classTab === 'meetings'}
+                  onChange={() => setClassTab('meetings')}
                 />
                 <label className="premium-tab-label" htmlFor="tab-1">Live Classes</label>
 
-                <input 
-                  type="radio" 
-                  name="class-tabs" 
-                  id="tab-2" 
-                  className="premium-tab-radio" 
-                  checked={classTab === 'details'} 
-                  onChange={() => setClassTab('details')} 
+                <input
+                  type="radio"
+                  name="class-tabs"
+                  id="tab-2"
+                  className="premium-tab-radio"
+                  checked={classTab === 'details'}
+                  onChange={() => setClassTab('details')}
                 />
                 <label className="premium-tab-label" htmlFor="tab-2">Class Details</label>
 
-                <input 
-                  type="radio" 
-                  name="class-tabs" 
-                  id="tab-3" 
-                  className="premium-tab-radio" 
-                  checked={classTab === 'students'} 
-                  onChange={() => { setClassTab('students'); fetchStudents(); }} 
+                <input
+                  type="radio"
+                  name="class-tabs"
+                  id="tab-3"
+                  className="premium-tab-radio"
+                  checked={classTab === 'students'}
+                  onChange={() => { setClassTab('students'); fetchStudents(); }}
                 />
                 <label className="premium-tab-label" htmlFor="tab-3">Enrolled Students</label>
 
@@ -553,154 +553,154 @@ export default function TeacherDashboard({ user, dashboardData, startZoomMeeting
               <div className="w-full">
                 <AnimatePresence mode="wait">
                   {classTab === 'details' && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass p-10 rounded-[2.5rem] space-y-10 relative overflow-hidden">
-                    <div className="absolute -left-20 -top-20 size-60 bg-primary/5 blur-[80px] rounded-full" />
-                    <div className="relative z-10 space-y-4">
-                      <div className="flex items-center gap-3">
-                        <div className="size-1 bg-primary rounded-full shadow-[0_0_10px_#f3184c]" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-text-muted">Mission Description</h3>
-                      </div>
-                      <p className="text-xl font-medium text-text-main/80 leading-relaxed tracking-tight max-w-3xl">{course.description}</p>
-                    </div>
-
-                    <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-8 pt-10 border-t border-white/5">
-                      <div className="space-y-2">
-                        <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] opacity-40">Protocol Status</p>
-                        <div className="flex items-center gap-2">
-                          <span className={`size-3 rounded-full ${course.isActive ? 'bg-success' : 'bg-text-muted'}`} />
-                          <span className="text-sm font-black uppercase">{course.isActive ? 'Operational' : 'Idle'}</span>
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass p-10 rounded-[2.5rem] space-y-10 relative overflow-hidden">
+                      <div className="absolute -left-20 -top-20 size-60 bg-primary/5 blur-[80px] rounded-full" />
+                      <div className="relative z-10 space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="size-1 bg-primary rounded-full shadow-[0_0_10px_#f3184c]" />
+                          <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-text-muted">Mission Description</h3>
                         </div>
+                        <p className="text-xl font-medium text-text-main/80 leading-relaxed tracking-tight max-w-3xl">{course.description}</p>
                       </div>
-                      <div className="space-y-2">
-                        <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] opacity-40">Access Level</p>
-                        <span className="text-sm font-black uppercase text-primary tracking-widest">Public Institutional</span>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
 
-                {classTab === 'meetings' && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-                    <div className="flex items-center justify-between px-2">
-                      <div>
-                        <h3 className="font-black text-xl tracking-tighter">Live Classes</h3>
-                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest opacity-40 mt-1">Total: {meetings.length} class(es)</p>
-                      </div>
-                      <button className="animated-button" onClick={() => { setEditingMeeting(null); setShowMeetingForm(true); }}>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="arr-2" viewBox="0 0 24 24">
-                          <path d="M16.1716 10.9999L10.8076 5.63589L12.2218 4.22168L20 11.9999L12.2218 19.778L10.8076 18.3638L16.1716 12.9999H4V10.9999H16.1716Z" />
-                        </svg>
-                        <span className="text">Schedule Class</span>
-                        <span className="circle"></span>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="arr-1" viewBox="0 0 24 24">
-                          <path d="M16.1716 10.9999L10.8076 5.63589L12.2218 4.22168L20 11.9999L12.2218 19.778L10.8076 18.3638L16.1716 12.9999H4V10.9999H16.1716Z" />
-                        </svg>
-                      </button>
-                    </div>
-
-                    <div className="space-y-5">
-                      {upcomingM.length === 0 ? (
-                        <div className="glass rounded-[2rem] py-20 text-center border-dashed border-white/10">
-                          <Video size={40} className="text-text-muted opacity-10 mx-auto mb-4" />
-                          <p className="text-text-muted font-black text-xs uppercase tracking-[0.3em]">No Upcoming Logistics</p>
-                        </div>
-                      ) : upcomingM.map((m: any) => {
-                        const dt = new Date(m.scheduledAt);
-                        const isNow = now.getTime() > dt.getTime() - 15 * 60 * 1000 && now.getTime() < dt.getTime() + 24 * 60 * 60 * 1000;
-                        return (
-                          <div key={m.id} className="glass rounded-[2.5rem] p-7 flex items-center justify-between group hover:border-primary/30 transition-all shadow-xl shadow-black/10">
-                            <div className="flex items-center gap-6">
-                              <div className="size-16 rounded-[1.5rem] bg-white/[0.03] border border-white/5 flex items-center justify-center text-text-muted group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all duration-500 shadow-inner">
-                                <Video size={28} strokeWidth={1.5} />
-                              </div>
-                              <div className="space-y-1.5">
-                                <div className="flex items-center gap-3">
-                                  <h4 className="font-black text-xl tracking-tight leading-none">{m.title}</h4>
-                                  {isNow && <span className="bg-primary/20 text-primary text-[9px] font-black uppercase px-2 py-0.5 rounded-lg border border-primary/20 animate-pulse tracking-widest">Active Point</span>}
-                                </div>
-                                <p className="text-text-muted text-[10px] font-black uppercase tracking-[0.2em] opacity-40 h-fit leading-none flex items-center gap-2">
-                                  <Clock size={12} className="text-primary" /> {dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} @ {dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <div className="flex bg-white/5 border border-white/10 rounded-2xl p-1 gap-1">
-                                <button onClick={() => { setEditingMeeting(m); setShowMeetingForm(true); }} className="size-10 rounded-xl flex items-center justify-center text-text-muted hover:bg-white/10 hover:text-white transition-all"><Pencil size={16} /></button>
-                                <button onClick={() => deleteMeeting(m.id)} className="size-10 rounded-xl flex items-center justify-center text-text-muted hover:bg-danger/20 hover:text-danger transition-all"><Trash2 size={16} /></button>
-                              </div>
-                              {isNow && m.zoomMeetingId && (
-                                <Button onClick={() => startZoomMeeting(m)} className="h-12 rounded-2xl px-6 bg-primary text-white shadow-lg shadow-primary/20">Launch Interface</Button>
-                              )}
-                            </div>
+                      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-8 pt-10 border-t border-white/5">
+                        <div className="space-y-2">
+                          <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] opacity-40">Protocol Status</p>
+                          <div className="flex items-center gap-2">
+                            <span className={`size-3 rounded-full ${course.isActive ? 'bg-success' : 'bg-text-muted'}`} />
+                            <span className="text-sm font-black uppercase">{course.isActive ? 'Operational' : 'Idle'}</span>
                           </div>
-                        );
-                      })}
-                    </div>
-
-                    {pastM.length > 0 && (
-                      <div className="pt-6 border-t border-white/5">
-                        <button onClick={() => setShowPastMeetings(!showPastMeetings)} className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted hover:text-primary transition-all flex items-center gap-3 ml-2">
-                          <div className="size-6 rounded-lg bg-white/5 flex items-center justify-center">{showPastMeetings ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</div>
-                          Archived Logs ({pastM.length})
-                        </button>
-                        <AnimatePresence>
-                          {showPastMeetings && (
-                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mt-6 space-y-3 overflow-hidden ml-4">
-                              {pastM.map((m: any) => (
-                                <div key={m.id} className="glass border-white/5 p-4 rounded-2xl flex items-center justify-between text-[11px] font-black uppercase tracking-widest opacity-40 hover:opacity-80 transition-all group">
-                                  <div className="flex items-center gap-3">
-                                    <div className="size-2 bg-text-muted rounded-full group-hover:bg-primary transition-colors" />
-                                    <span>{m.title}</span>
-                                  </div>
-                                  <span className="font-mono text-[9px]">{new Date(m.scheduledAt).toLocaleDateString()}</span>
-                                </div>
-                              ))}
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] opacity-40">Access Level</p>
+                          <span className="text-sm font-black uppercase text-primary tracking-widest">Public Institutional</span>
+                        </div>
                       </div>
-                    )}
-                  </motion.div>
-                )}
+                    </motion.div>
+                  )}
 
-                {classTab === 'students' && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                    <div className="data-table-container rounded-2xl border border-white/5">
-                      <table className="data-table">
-                        <thead><tr><th>Student</th><th>Email</th><th>Status</th></tr></thead>
-                        <tbody>
-                          {enrolledS.length === 0 ? (
-                            <tr><td colSpan={3} className="text-center py-24 opacity-30 italic font-black uppercase tracking-[0.3em] text-xs">No Students Enrolled</td></tr>
-                          ) : enrolledS.map((s: any) => (
-                            <tr key={s.id} className="group hover:bg-white/[0.02]">
-                              <td>
-                                <div className="flex items-center gap-4 py-1">
-                                  <div className="size-11 rounded-2xl bg-surface-2 border border-white/10 flex items-center justify-center shrink-0 relative group-hover:scale-105 transition-transform">
-                                    <UserCheck size={20} className="text-primary opacity-60" />
-                                  </div>
-                                  <div>
-                                    <p className="font-black text-sm tracking-tight">{s.users?.fullName || s.users?.username}</p>
-                                    <p className="text-[9px] font-black uppercase text-text-muted opacity-40">Reg: {s.createdAt.slice(0, 10)}</p>
-                                  </div>
+                  {classTab === 'meetings' && (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+                      <div className="flex items-center justify-between px-2">
+                        <div>
+                          <h3 className="font-black text-xl tracking-tighter">Live Classes</h3>
+                          <p className="text-[10px] font-black text-text-muted uppercase tracking-widest opacity-40 mt-1">Total: {meetings.length} class(es)</p>
+                        </div>
+                        <button className="animated-button" onClick={() => { setEditingMeeting(null); setShowMeetingForm(true); }}>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="arr-2" viewBox="0 0 24 24">
+                            <path d="M16.1716 10.9999L10.8076 5.63589L12.2218 4.22168L20 11.9999L12.2218 19.778L10.8076 18.3638L16.1716 12.9999H4V10.9999H16.1716Z" />
+                          </svg>
+                          <span className="text">Schedule Class</span>
+                          <span className="circle"></span>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="arr-1" viewBox="0 0 24 24">
+                            <path d="M16.1716 10.9999L10.8076 5.63589L12.2218 4.22168L20 11.9999L12.2218 19.778L10.8076 18.3638L16.1716 12.9999H4V10.9999H16.1716Z" />
+                          </svg>
+                        </button>
+                      </div>
+
+                      <div className="space-y-5">
+                        {upcomingM.length === 0 ? (
+                          <div className="glass rounded-[2rem] py-20 text-center border-dashed border-white/10">
+                            <Video size={40} className="text-text-muted opacity-10 mx-auto mb-4" />
+                            <p className="text-text-muted font-black text-xs uppercase tracking-[0.3em]">No Upcoming Logistics</p>
+                          </div>
+                        ) : upcomingM.map((m: any) => {
+                          const dt = new Date(m.scheduledAt);
+                          const isNow = now.getTime() > dt.getTime() - 15 * 60 * 1000 && now.getTime() < dt.getTime() + 24 * 60 * 60 * 1000;
+                          return (
+                            <div key={m.id} className="glass rounded-[2.5rem] p-7 flex items-center justify-between group hover:border-primary/30 transition-all shadow-xl shadow-black/10">
+                              <div className="flex items-center gap-6">
+                                <div className="size-16 rounded-[1.5rem] bg-white/[0.03] border border-white/5 flex items-center justify-center text-text-muted group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all duration-500 shadow-inner">
+                                  <Video size={28} strokeWidth={1.5} />
                                 </div>
-                              </td>
-                              <td className="text-text-muted text-xs font-mono opacity-60 group-hover:opacity-100 transition-opacity uppercase">{s.users?.email}</td>
-                              <td>
-                                <div className="flex items-center gap-2">
-                                  <span className={`size-2.5 rounded-full ${s.users?.isActive ? 'bg-success shadow-[0_0_10px_#10b981]' : 'bg-danger shadow-[0_0_10px_#f43f5e]'}`} />
-                                  <span className="text-[10px] font-black uppercase tracking-widest">{s.users?.isActive ? 'Verified' : 'Suspended'}</span>
+                                <div className="space-y-1.5">
+                                  <div className="flex items-center gap-3">
+                                    <h4 className="font-black text-xl tracking-tight leading-none">{m.title}</h4>
+                                    {isNow && <span className="bg-primary/20 text-primary text-[9px] font-black uppercase px-2 py-0.5 rounded-lg border border-primary/20 animate-pulse tracking-widest">Active Point</span>}
+                                  </div>
+                                  <p className="text-text-muted text-[10px] font-black uppercase tracking-[0.2em] opacity-40 h-fit leading-none flex items-center gap-2">
+                                    <Clock size={12} className="text-primary" /> {dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} @ {dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </p>
                                 </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <div className="flex bg-white/5 border border-white/10 rounded-2xl p-1 gap-1">
+                                  <button onClick={() => { setEditingMeeting(m); setShowMeetingForm(true); }} className="size-10 rounded-xl flex items-center justify-center text-text-muted hover:bg-white/10 hover:text-white transition-all"><Pencil size={16} /></button>
+                                  <button onClick={() => deleteMeeting(m.id)} className="size-10 rounded-xl flex items-center justify-center text-text-muted hover:bg-danger/20 hover:text-danger transition-all"><Trash2 size={16} /></button>
+                                </div>
+                                {isNow && m.zoomMeetingId && (
+                                  <Button onClick={() => startZoomMeeting(m)} className="h-12 rounded-2xl px-6 bg-primary text-white shadow-lg shadow-primary/20">Launch Interface</Button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {pastM.length > 0 && (
+                        <div className="pt-6 border-t border-white/5">
+                          <button onClick={() => setShowPastMeetings(!showPastMeetings)} className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted hover:text-primary transition-all flex items-center gap-3 ml-2">
+                            <div className="size-6 rounded-lg bg-white/5 flex items-center justify-center">{showPastMeetings ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</div>
+                            Archived Logs ({pastM.length})
+                          </button>
+                          <AnimatePresence>
+                            {showPastMeetings && (
+                              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mt-6 space-y-3 overflow-hidden ml-4">
+                                {pastM.map((m: any) => (
+                                  <div key={m.id} className="glass border-white/5 p-4 rounded-2xl flex items-center justify-between text-[11px] font-black uppercase tracking-widest opacity-40 hover:opacity-80 transition-all group">
+                                    <div className="flex items-center gap-3">
+                                      <div className="size-2 bg-text-muted rounded-full group-hover:bg-primary transition-colors" />
+                                      <span>{m.title}</span>
+                                    </div>
+                                    <span className="font-mono text-[9px]">{new Date(m.scheduledAt).toLocaleDateString()}</span>
+                                  </div>
+                                ))}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+
+                  {classTab === 'students' && (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                      <div className="data-table-container rounded-2xl border border-white/5">
+                        <table className="data-table">
+                          <thead><tr><th>Student</th><th>Email</th><th>Status</th></tr></thead>
+                          <tbody>
+                            {enrolledS.length === 0 ? (
+                              <tr><td colSpan={3} className="text-center py-24 opacity-30 italic font-black uppercase tracking-[0.3em] text-xs">No Students Enrolled</td></tr>
+                            ) : enrolledS.map((s: any) => (
+                              <tr key={s.id} className="group hover:bg-white/[0.02]">
+                                <td>
+                                  <div className="flex items-center gap-4 py-1">
+                                    <div className="size-11 rounded-2xl bg-surface-2 border border-white/10 flex items-center justify-center shrink-0 relative group-hover:scale-105 transition-transform">
+                                      <UserCheck size={20} className="text-primary opacity-60" />
+                                    </div>
+                                    <div>
+                                      <p className="font-black text-sm tracking-tight">{s.users?.fullName || s.users?.username}</p>
+                                      <p className="text-[9px] font-black uppercase text-text-muted opacity-40">Reg: {s.createdAt.slice(0, 10)}</p>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="text-text-muted text-xs font-mono opacity-60 group-hover:opacity-100 transition-opacity uppercase">{s.users?.email}</td>
+                                <td>
+                                  <div className="flex items-center gap-2">
+                                    <span className={`size-2.5 rounded-full ${s.users?.isActive ? 'bg-success shadow-[0_0_10px_#10b981]' : 'bg-danger shadow-[0_0_10px_#f43f5e]'}`} />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">{s.users?.isActive ? 'Verified' : 'Suspended'}</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
-          </div>
 
             {showMeetingForm && (
               <MeetingFormModal

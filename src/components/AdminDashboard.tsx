@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import {
     Users, BookOpen, DollarSign, ShieldCheck, UserCheck,
-    Trash2, Search, Filter, RefreshCw, ChevronRight, X,
-    CheckCircle2, AlertCircle, TrendingUp, Zap, Globe, Package,
-    Shield, Verified, Key, Activity, ArrowRight, UserX
+    Trash2, Search, RefreshCw, ChevronRight, X,
+    CheckCircle2, AlertCircle, TrendingUp, Key, Activity, 
+    UserX, GraduationCap, ShoppingBag, Eye, Edit3, Save, 
+    Calendar, Video, Briefcase, Award, Hash, Mail, Phone,
+    MoreVertical, ExternalLink
 } from 'lucide-react';
 import { Button } from './ui/interfaces-button';
 import { Input } from './ui/input';
-import { Label } from './ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 
 interface AdminDashboardProps {
     user: any;
@@ -21,126 +21,177 @@ interface AdminDashboardProps {
     token: string | null;
 }
 
+const ProtocolCard = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => (
+    <div className={`protocol-card relative overflow-hidden group ${className}`}>
+        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
+        {children}
+    </div>
+);
+
 const StatCard: React.FC<{ label: string; value: string | number; icon: React.ElementType; trend?: string; color?: string }> = ({
     label, value, icon: Icon, trend, color = 'primary'
 }) => (
-    <div className="glass rounded-[2rem] p-7 flex flex-col gap-6 relative overflow-hidden group hover:border-primary/40 transition-all duration-500 hover:translate-y-[-4px]">
-        <div className={`absolute -right-4 -top-4 size-24 bg-${color}/5 blur-2xl rounded-full group-hover:bg-${color}/10 transition-all`} />
+    <div className="protocol-card !p-6 flex flex-col gap-4 group hover:translate-y-[-4px] transition-all duration-500">
         <div className="flex items-center justify-between">
-            <div className={`size-12 rounded-2xl flex items-center justify-center shrink-0 shadow-lg bg-${color}/10 text-${color} border border-${color}/20 group-hover:scale-110 transition-transform`}>
-                <Icon size={22} />
+            <div className={`size-10 rounded-xl flex items-center justify-center shrink-0 bg-${color}/10 text-${color} border border-${color}/20 group-hover:scale-110 transition-transform`}>
+                <Icon size={18} />
             </div>
             {trend && (
-                <div className="flex items-center gap-1.5 bg-success/10 text-success text-[10px] font-black px-3 py-1.5 rounded-xl border border-success/20">
-                    <TrendingUp size={12} /> {trend}
+                <div className="flex items-center gap-1 bg-success/10 text-success text-[8px] font-black px-2 py-1 rounded-lg border border-success/20 uppercase tracking-widest">
+                    <TrendingUp size={10} /> {trend}
                 </div>
             )}
         </div>
         <div>
-            <p className="text-text-muted text-[10px] font-black uppercase tracking-[0.25em] mb-1.5 opacity-60 leading-none">{label}</p>
-            <p className="text-4xl font-black text-text-main tracking-tighter leading-none">{value}</p>
+            <p className="text-white/80 text-[11px] font-black uppercase tracking-[0.2em] mb-2 opacity-80 italic">{label}</p>
+            <p className="text-3xl font-black text-white tracking-tighter leading-none italic">{value}</p>
         </div>
     </div>
 );
 
-export default function AdminDashboard({ user, dashboardData, activeTab, setActiveTab, token }: AdminDashboardProps) {
-    const [activeView, setActiveView] = useState<'teachers' | 'students' | 'courses'>('teachers');
+// --- Sub-components for Modals / Details ---
+
+const DetailRow = ({ label, value, icon: Icon }: { label: string, value: string, icon?: React.ElementType }) => (
+    <div className="p-4 rounded-xl bg-white/[0.04] border border-white/10 space-y-1 shadow-inner">
+        <div className="flex items-center gap-2 text-primary opacity-80 mb-1">
+            {Icon && <Icon size={12} />}
+            <p className="text-[9px] font-black uppercase tracking-widest">{label}</p>
+        </div>
+        <p className="text-sm font-bold text-white italic tracking-tight">{value || 'UNSPECIFIED'}</p>
+    </div>
+);
+
+export default function AdminDashboard({ user, dashboardData: initialStats, activeTab, setActiveTab, token }: AdminDashboardProps) {
     const [data, setData] = useState<any[]>([]);
+    const [stats, setStats] = useState<any>(initialStats);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
-    const [error, setError] = useState('');
+    const [selectedItem, setSelectedItem] = useState<any>(null);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [editData, setEditData] = useState<any>({});
 
-    const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
+    const authHeaders = useMemo(() => ({ headers: { Authorization: `Bearer ${token}` } }), [token]);
     const displayName = user?.fullName || user?.username;
+
+    const fetchStats = async () => {
+        try {
+            const r = await axios.get('/api/admin/stats', authHeaders);
+            setStats(r.data);
+        } catch {}
+    };
 
     const fetchData = async () => {
         setLoading(true);
         try {
-            const endpoint = activeView === 'teachers' ? '/api/admin/teachers' :
-                activeView === 'students' ? '/api/admin/students' : '/api/admin/courses';
-            const r = await axios.get(endpoint, authHeaders);
-            setData(r.data);
-        } catch { }
+            let endpoint = '';
+            switch(activeTab) {
+                case 'teachers': endpoint = '/api/admin/teachers'; break;
+                case 'students': endpoint = '/api/admin/students'; break;
+                case 'classes': endpoint = '/api/admin/courses'; break;
+                case 'purchases': endpoint = '/api/admin/purchases'; break;
+                case 'dashboard': endpoint = '/api/admin/teachers'; break; // for preview
+            }
+            if (endpoint) {
+                const r = await axios.get(endpoint, authHeaders);
+                setData(r.data);
+            }
+        } catch (err) {
+            console.error("Fetch Data Error:", err);
+        }
         setLoading(false);
     };
 
     useEffect(() => {
-        if (activeTab === 'admin' || activeTab === 'dashboard') fetchData();
-    }, [activeTab, activeView]);
+        fetchStats();
+    }, []);
 
-    const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
+    useEffect(() => {
+        fetchData();
+        setSelectedItem(null);
+        setIsEditMode(false);
+    }, [activeTab]);
+
+    const handleToggleStatus = async (id: string, current: boolean) => {
         try {
-            await axios.put(`/api/admin/users/${userId}/status`, { isActive: !currentStatus }, authHeaders);
+            await axios.put(`/api/admin/users/${id}/toggle`, {}, authHeaders);
             fetchData();
-        } catch (err) {
-            alert('Action unauthorized by security protocol.');
-        }
+        } catch { alert("SECURITY OVERRIDE FAILED"); }
     };
 
-    // ── Overview / Control Center ──
+    const handleDelete = async (id: string, type: 'user' | 'course') => {
+        if (!window.confirm("ARE YOU SURE YOU WANT TO DELETE THIS RECORD? THIS ACTION IS PERMANENT.")) return;
+        try {
+            const endpoint = type === 'user' ? `/api/admin/users/${id}` : `/api/admin/courses/${id}`;
+            await axios.delete(endpoint, authHeaders);
+            fetchData();
+            setSelectedItem(null);
+        } catch { alert("SECURITY OVERRIDE FAILED: NODE PROTECTED"); }
+    };
+
+    const handleSaveEdit = async () => {
+        try {
+            const endpoint = activeTab === 'classes' ? `/api/admin/courses/${selectedItem.id}` : `/api/admin/users/${selectedItem.id}`;
+            await axios.put(endpoint, editData, authHeaders);
+            fetchData();
+            setSelectedItem(null);
+            setIsEditMode(false);
+        } catch { alert("PROTOCOL UPDATE FAILED"); }
+    };
+
+    const filteredData = useMemo(() => {
+        return data.filter(item => {
+            const name = (item.name || item.fullName || item.username || '').toLowerCase();
+            return name.includes(search.toLowerCase());
+        });
+    }, [data, search]);
+
+    // ── Overview / Dashboard ──
     if (activeTab === 'dashboard') {
+        const topTeachers = data.slice(0, 5);
         return (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-10">
-                <div className="relative overflow-hidden rounded-[3rem] bg-surface-2 border border-white/5 p-10 md:p-14 mb-8">
-                    <div className="absolute -right-20 -top-20 size-[450px] bg-primary/10 blur-[130px] rounded-full" />
-                    <div className="absolute left-1/3 -bottom-20 size-[320px] bg-primary/5 blur-[100px] rounded-full" />
-
+                <div className="protocol-card !p-10 md:!p-14 relative overflow-hidden">
+                    <div className="protocol-header-glow scale-150 rotate-12" />
                     <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-12">
                         <div className="space-y-6">
                             <div className="flex items-center gap-4 mb-2">
-                                <div className="size-16 rounded-[1.5rem] bg-primary flex items-center justify-center shadow-2xl shadow-primary/40"><ShieldCheck size={32} className="text-white" /></div>
+                                <div className="size-16 rounded-[1.5rem] bg-primary flex items-center justify-center shadow-2xl shadow-primary/40">
+                                    <ShieldCheck size={32} className="text-white" />
+                                </div>
                                 <div className="flex flex-col">
-                                    <div className="bg-white/5 border border-white/10 rounded-full px-4 py-1 flex items-center gap-2 mb-1.5 w-fit">
-                                        <span className="size-2 bg-success rounded-full shadow-[0_0_8px_#10b981]" />
-                                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted">Global Node Alpha Ready</span>
-                                    </div>
-                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary opacity-60 ml-1">LMS.ADMIN_v3_STABLE</p>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary opacity-60 ml-1 italic">SYSTEM.STABLE_v4.0</p>
                                 </div>
                             </div>
-                            <h1 className="text-4xl md:text-6xl font-black tracking-tighter leading-[0.95]">
-                                Global Control <br />Center, <span className="text-gradient font-black underline decoration-white/5 decoration-4">{displayName}</span>.
+                            <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-[0.9]">
+                                Control <span className="text-gradient">Registry</span>, <br />Administrator.
                             </h1>
-                            <p className="text-text-muted text-sm md:text-base max-w-xl leading-relaxed font-black opacity-60 uppercase tracking-tighter">
-                                Synchronized identity management enabled. <br />Your ecosystem currently supports <span className="text-text-main opacity-100 italic">{dashboardData?.totalStudents || 0} active learning vectors</span> and <span className="text-text-main opacity-100 italic">{dashboardData?.totalTeachers || 0} institutional facilitators</span>.
+                            <p className="text-text-muted text-sm md:text-base max-w-xl leading-relaxed font-bold opacity-60 uppercase tracking-tighter border-l-2 border-primary/20 pl-6">
+                                Synchronized metrics reflecting <span className="text-text-main opacity-100">{stats?.totalStudents || 0} learners</span> and <span className="text-text-main opacity-100">{stats?.approvedTeachers || 0} facilitators</span> within your ecosystem.
                             </p>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 shrink-0">
-                            <div className="glass p-6 rounded-[2rem] flex flex-col gap-4 border-dashed group hover:border-primary/40 transition-all cursor-pointer">
-                                <Key size={20} className="text-primary group-hover:scale-125 transition-transform" />
-                                <div>
-                                    <p className="text-[9px] font-black uppercase tracking-widest text-text-muted opacity-40 mb-1">Access Protocol</p>
-                                    <p className="text-sm font-black text-white italic">Verify Class Requests &rarr;</p>
-                                </div>
-                            </div>
-                            <div className="glass p-6 rounded-[2rem] flex flex-col gap-4 border-dashed group hover:border-success/40 transition-all cursor-pointer">
-                                <Activity size={20} className="text-success group-hover:scale-125 transition-transform" />
-                                <div>
-                                    <p className="text-[9px] font-black uppercase tracking-widest text-text-muted opacity-40 mb-1">Node Integrity</p>
-                                    <p className="text-sm font-black text-white italic">Health Diagnostics &rarr;</p>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <StatCard label="Learner Registry" value={dashboardData?.totalStudents || 0} icon={Users} trend="+12%" />
-                    <StatCard label="Facilitator Registry" value={dashboardData?.totalTeachers || 0} icon={UserCheck} trend="+4%" />
-                    <StatCard label="Established Classes" value={dashboardData?.totalCourses || 0} icon={BookOpen} trend="+8%" />
-                    <StatCard label="Locked Revenue" value={`${(0).toLocaleString()}`} icon={DollarSign} trend="+22%" color="success" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
+                    <StatCard label="Total Learners" value={stats?.totalStudents || 0} icon={Users} color="primary" />
+                    <StatCard label="Verified Tutors" value={stats?.approvedTeachers || 0} icon={UserCheck} color="success" />
+                    <StatCard label="Active Classes" value={stats?.activeModules || 0} icon={BookOpen} color="warning" />
+                    <StatCard label="Locked Revenue" value={`${Number(stats?.totalRevenue || 0).toLocaleString()}`} icon={DollarSign} color="success" />
+                    <StatCard label="Monthly Fiscal" value={stats?.purchasesThisMonth || 0} icon={ShoppingBag} color="primary" />
+                    <StatCard label="Security Queue" value={stats?.pendingTeachers || 0} icon={AlertCircle} color="danger" trend="Review" />
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-                    <div className="lg:col-span-2 space-y-8">
+                <div className="grid grid-cols-1 gap-10">
+                    <div className="space-y-8">
                         <div className="flex items-center justify-between px-2">
-                            <h2 className="font-black text-2xl tracking-tighter italic uppercase">Identity Vector Logs</h2>
-                            <button onClick={() => setActiveTab('admin')} className="text-[10px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2">Full Registry Registry <ChevronRight size={14} /></button>
+                            <h2 className="font-black text-2xl tracking-tighter italic uppercase underline decoration-primary/40 decoration-4">Facilitator Logs</h2>
+                            <button onClick={() => setActiveTab('teachers')} className="text-[10px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2 hover:translate-x-2 transition-transform">Registry Access <ChevronRight size={14} /></button>
                         </div>
-                        <div className="data-table-container border border-white/5 rounded-[2.5rem] shadow-2xl shadow-black/30 overflow-hidden">
+                        <div className="data-table-container">
                             <table className="data-table">
-                                <thead><tr><th>Identity Handle</th><th>Protocol</th><th>Risk Status</th></tr></thead>
+                                <thead><tr><th>Identity Handle</th><th>Status</th></tr></thead>
                                 <tbody>
-                                    {data.slice(0, 5).map((u: any) => (
+                                    {topTeachers.map((u: any) => (
                                         <tr key={u.id}>
                                             <td>
                                                 <div className="flex items-center gap-4 py-1">
@@ -150,15 +201,14 @@ export default function AdminDashboard({ user, dashboardData, activeTab, setActi
                                                     </Avatar>
                                                     <div>
                                                         <p className="font-black text-sm tracking-tight">{u.fullName || u.username}</p>
-                                                        <p className="text-[9px] font-black text-text-muted opacity-40 uppercase tracking-widest">Enrolled 2024</p>
+                                                        <p className="text-[9px] font-black text-text-muted opacity-40 uppercase tracking-widest">{u.email}</p>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td><span className="text-[10px] font-black tracking-widest bg-white/5 border border-white/10 px-3 py-1 rounded-full text-text-muted">{u.role}</span></td>
                                             <td>
                                                 <div className="flex items-center gap-2">
-                                                    <div className={`size-2.5 rounded-full ${u.isActive ? 'bg-success shadow-[0_0_10px_#10b981]' : 'bg-danger shadow-[0_0_10px_#f43f5e]'}`} />
-                                                    <span className="text-[10px] font-black uppercase tracking-widest">{u.isActive ? 'VERIFIED' : 'SUSPENDED'}</span>
+                                                    <div className={`size-2 rounded-full ${u.approvalStatus === 'APPROVED' ? 'bg-success shadow-[0_0_10px_#10b981]' : 'bg-warning shadow-[0_0_10px_#f59e0b]'}`} />
+                                                    <span className="text-[9px] font-black uppercase tracking-widest">{u.approvalStatus}</span>
                                                 </div>
                                             </td>
                                         </tr>
@@ -167,163 +217,388 @@ export default function AdminDashboard({ user, dashboardData, activeTab, setActi
                             </table>
                         </div>
                     </div>
+                </div>
+            </motion.div>
+        );
+    }
 
-                    <div className="space-y-8">
-                        <h2 className="font-black text-2xl tracking-tighter italic uppercase px-2">Security Hub</h2>
-                        <div className="space-y-4">
-                            <div className="glass p-8 rounded-[2.5rem] relative overflow-hidden group">
-                                <div className="absolute -right-10 -top-10 size-40 bg-danger/5 blur-3xl opacity-0 group-hover:opacity-100 transition-all rounded-full" />
-                                <div className="relative z-10 flex flex-col gap-6">
-                                    <div className="size-14 rounded-2xl bg-danger/10 border border-danger/20 flex items-center justify-center text-danger group-hover:scale-110 transition-transform">
-                                        <Shield size={24} />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-black text-xl italic tracking-tighter mb-2">Threat Mitigation</h3>
-                                        <p className="text-[11px] font-black text-text-muted opacity-40 uppercase tracking-widest leading-loose">Automated protocol monitoring active. Ensure consistent identity reviews for new facilitators.</p>
-                                    </div>
-                                    <Button variant="outline" className="w-fit h-12 px-8 rounded-2xl border-danger/20 text-danger hover:bg-danger hover:text-white mt-2">Initialize Audit</Button>
+    // ── Universal Table Headers ──
+    const renderTableHeaders = () => {
+        switch(activeTab) {
+            case 'teachers':
+                return (<tr><th>Identity Facet</th><th>Expertise Vector</th><th>Yield (Earnings)</th><th>Security</th><th className="text-center">Actions</th></tr>);
+            case 'students':
+                return (<tr><th>Learner Identity</th><th>Institution</th><th>Academic Reach</th><th>Status</th><th className="text-center">Actions</th></tr>);
+            case 'classes':
+                return (<tr><th>Academic Class</th><th>Primary Facilitator</th><th>Fiscal Node</th><th>Lifecycle</th><th className="text-center">Actions</th></tr>);
+            case 'purchases':
+                return (<tr><th>Transaction Hash</th><th>Learner Node</th><th>Asset Target</th><th>Timestamp</th><th>Fiscal Value</th></tr>);
+            default: return null;
+        }
+    };
+
+    // ── Table Cell Renderers ──
+    const renderRow = (item: any) => {
+        const isSuspended = activeTab === 'classes' ? !item.isActive : item.approvalStatus === 'SUSPENDED' || !item.isActive;
+        const statusColor = isSuspended ? 'bg-danger shadow-[0_0_8px_#f43f5e]' : 'bg-success shadow-[0_0_8px_#10b981]';
+        
+        switch(activeTab) {
+            case 'teachers':
+                const earnings = item.modules?.reduce((sum: number, m: any) => sum + m.enrollments?.filter((e: any) => e.status === 'PAID').reduce((s: number, en: any) => s + Number(en.amount), 0), 0) || 0;
+                return (
+                    <tr key={item.id} className="group hover:bg-white/[0.015]">
+                        <td>
+                            <div className="flex items-center gap-4 py-2">
+                                <Avatar className="size-11 rounded-2xl ring-2 ring-primary/20">
+                                    <AvatarImage src={item.profilePhotoUrl} />
+                                    <AvatarFallback>{(item.fullName || item.username || 'A').charAt(0).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <p className="font-black text-base tracking-tight">{item.fullName || item.username}</p>
+                                    <p className="text-[9px] font-black text-text-muted opacity-40 uppercase tracking-widest">{item.email}</p>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-            </motion.div>
-        );
-    }
-
-    // ── Management Console ──
-    if (activeTab === 'admin') {
-        return (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10">
-                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8 px-2">
-                    <div>
-                        <h1 className="text-4xl font-black tracking-tighter">Identity Console</h1>
-                        <p className="text-text-muted text-sm font-black uppercase tracking-widest opacity-40 mt-1">Ecosystem User Management Protocol</p>
-                    </div>
-                    <div className="flex items-center gap-4 w-full md:w-auto">
-                        <div className="relative group flex-1 md:min-w-[400px]">
-                            <Search size={18} className="absolute left-6 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors" />
-                            <Input placeholder="Filter identity handles..." value={search} onChange={e => setSearch(e.target.value)} className="h-16 pl-16 rounded-[2rem] bg-white/[0.03] border-white/10" />
-                        </div>
-                        <button onClick={fetchData} className="size-16 rounded-[2rem] glass hover:text-primary transition-all flex items-center justify-center shrink-0 border-white/10"><RefreshCw size={22} /></button>
-                    </div>
-                </div>
-
-                <Tabs value={activeView} onValueChange={(v: any) => setActiveView(v)} className="w-full">
-                    <TabsList className="mb-8">
-                        <TabsTrigger value="teachers">Facilitator Registry</TabsTrigger>
-                        <TabsTrigger value="students">Learner Registry</TabsTrigger>
-                        <TabsTrigger value="courses">Academic Classes</TabsTrigger>
-                    </TabsList>
-
-                    <AnimatePresence mode="wait">
-                        <TabsContent value={activeView}>
-                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="data-table-container border border-white/5 rounded-[2.5rem] shadow-2xl shadow-black/20 overflow-hidden">
-                                <table className="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>{activeView === 'courses' ? 'Class Label' : 'Identified User'}</th>
-                                            <th>{activeView === 'courses' ? 'Owner / Faculty' : 'Vector Link (Email)'}</th>
-                                            <th>{activeView === 'courses' ? 'Fiscal Node' : 'Joined Protocol'}</th>
-                                            <th>Security Status</th>
-                                            <th className="text-center w-[120px]">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {loading ? (
-                                            <tr><td colSpan={5} className="py-24 text-center"><div className="size-14 border-[3px] border-primary border-t-transparent rounded-full animate-spin shadow-[0_0_20px_rgba(243,24,76,0.3)] mx-auto" /></td></tr>
-                                        ) : data.length === 0 ? (
-                                            <tr><td colSpan={5} className="text-center py-24 font-black opacity-20 uppercase tracking-[0.4em] text-xs italic">Registry Empty</td></tr>
-                                        ) : data.filter(item => {
-                                            const val = (item.name || item.fullName || item.username || '').toLowerCase();
-                                            return val.includes(search.toLowerCase());
-                                        }).map((item) => (
-                                            <tr key={item.id} className="group hover:bg-white/[0.015]">
-                                                <td>
-                                                    <div className="flex items-center gap-4 py-2">
-                                                        {activeView === 'courses' ? (
-                                                            <div className="size-12 rounded-2xl shrink-0 overflow-hidden shadow-lg border border-white/5" style={{ background: item.color || '#f3184c' }}>
-                                                                {item.imageUrl && <img src={item.imageUrl} className="w-full h-full object-cover" alt="" />}
-                                                            </div>
-                                                        ) : (
-                                                            <Avatar className="size-12 rounded-[1.25rem] ring-2 ring-primary/20">
-                                                                <AvatarImage src={item.profilePhotoUrl} />
-                                                                <AvatarFallback>{(item.fullName || item.username || 'A').charAt(0).toUpperCase()}</AvatarFallback>
-                                                            </Avatar>
-                                                        )}
-                                                        <div>
-                                                            <p className="font-black text-base tracking-tight">{item.name || item.fullName || item.username}</p>
-                                                            <p className="text-[9px] font-black text-text-muted opacity-40 uppercase tracking-widest">{activeView === 'courses' ? `ID: ${item.id.slice(0, 8)}` : `Protocol established`}</p>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="text-text-muted text-xs font-mono font-black opacity-50 group-hover:opacity-100 transition-opacity uppercase tracking-tighter">
-                                                    {activeView === 'courses' ? (item.teachers?.fullName || item.teachers?.username) : item.email}
-                                                </td>
-                                                <td>
-                                                    {activeView === 'courses' ? (
-                                                        <span className="lkr-amount font-black text-success text-sm italic">{Number(item.price).toLocaleString()}</span>
-                                                    ) : (
-                                                        <span className="text-[10px] font-black uppercase tracking-widest bg-white/5 px-2 py-1 rounded-lg border border-white/10">{item.createdAt?.slice(0, 10)}</span>
-                                                    )}
-                                                </td>
-                                                <td>
-                                                    <div className="flex items-center gap-2">
-                                                        <div className={`size-2.5 rounded-full ${item.status === 'PAID' || item.isActive ? 'bg-success shadow-[0_0_10px_#10b981]' : 'bg-danger shadow-[0_0_10px_#f43f5e]'}`} />
-                                                        <span className="text-[10px] font-black uppercase tracking-widest">{item.status === 'PAID' || item.isActive ? 'VERIFIED' : 'SUSPENDED'}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="text-center">
-                                                    <div className="flex items-center justify-center gap-2">
-                                                        <button
-                                                            onClick={() => activeView !== 'courses' && toggleUserStatus(item.id, item.isActive)}
-                                                            className={`size-10 rounded-xl flex items-center justify-center transition-all ${item.isActive ? 'bg-danger/10 text-danger hover:bg-danger hover:text-white' : 'bg-success/10 text-success hover:bg-success hover:text-white'}`}
-                                                            title={item.isActive ? "Suspend Node" : "Authorize Node"}
-                                                        >
-                                                            {item.isActive ? <UserX size={18} /> : <UserCheck size={18} />}
-                                                        </button>
-                                                        <button className="size-10 rounded-xl bg-white/5 flex items-center justify-center text-text-muted hover:bg-white/10 hover:text-white transition-all"><X size={18} /></button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </motion.div>
-                        </TabsContent>
-                    </AnimatePresence>
-                </Tabs>
-            </motion.div>
-        );
-    }
-
-    if (activeTab === 'settings') {
-        return (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8 max-w-4xl mx-auto py-10">
-                <div className="glass p-10 rounded-3xl border-white/10 text-center">
-                    <div className="size-20 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
-                        <ShieldCheck size={32} className="text-primary" />
-                    </div>
-                    <h2 className="text-2xl font-black mb-2 uppercase">System Configuration</h2>
-                    <p className="text-text-muted text-sm font-bold opacity-60 mb-8">Manage global platform parameters and security protocols.</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-                        <div className="p-6 rounded-2xl bg-white/5 border border-white/5">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-2 opacity-40">Admin Identifier</p>
-                            <p className="font-bold text-white uppercase">{user?.username}</p>
-                        </div>
-                        <div className="p-6 rounded-2xl bg-white/5 border border-white/5">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-2 opacity-40">System Role</p>
-                            <p className="font-bold text-primary uppercase">Root Administrator</p>
-                        </div>
-                    </div>
-                </div>
-            </motion.div>
-        );
-    }
+                        </td>
+                        <td>
+                            <div className="flex items-center gap-2">
+                                <Award size={14} className="text-primary opacity-40" />
+                                <span className="text-[10px] font-black uppercase tracking-tighter truncate max-w-[150px]">{item.subjectSpecialization || 'GENERALIST'}</span>
+                            </div>
+                        </td>
+                        <td className="font-black text-success text-sm italic underline decoration-success/20">LKR {earnings.toLocaleString()}</td>
+                        <td>
+                            <div className="flex items-center gap-2">
+                                <div className={`size-2.5 rounded-full ${statusColor}`} />
+                                <span className="text-[10px] font-black uppercase tracking-widest">{item.approvalStatus}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div className="flex items-center justify-center gap-2 opacity-40 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => { setSelectedItem(item); setEditData(item); setIsEditMode(false); }} className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-all"><Eye size={16} /></button>
+                                <button onClick={() => { setSelectedItem(item); setEditData(item); setIsEditMode(true); }} className="size-9 rounded-xl bg-white/5 text-white flex items-center justify-center hover:bg-white/10 transition-all"><Edit3 size={16} /></button>
+                                <button onClick={() => handleDelete(item.id, 'user')} className="size-9 rounded-xl bg-danger/10 text-danger flex items-center justify-center hover:bg-danger hover:text-white transition-all"><Trash2 size={16} /></button>
+                            </div>
+                        </td>
+                    </tr>
+                );
+            case 'students':
+                return (
+                    <tr key={item.id} className="group hover:bg-white/[0.015]">
+                        <td>
+                            <div className="flex items-center gap-4 py-2">
+                                <Avatar className="size-11 rounded-2xl ring-2 ring-success/20">
+                                    <AvatarImage src={item.profilePhotoUrl} />
+                                    <AvatarFallback>{(item.fullName || item.username || 'S').charAt(0).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <p className="font-black text-base tracking-tight">{item.fullName || item.username}</p>
+                                    <p className="text-[9px] font-black text-text-muted opacity-40 uppercase tracking-widest">ID: {item.id.slice(0, 8)}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td className="text-[10px] font-black uppercase text-text-muted opacity-60 italic">{item.school || 'Private Sector'}</td>
+                        <td className="text-[10px] font-black text-primary italic uppercase tracking-tighter">{item.enrollments?.length || 0} Courses Accessed</td>
+                        <td>
+                            <div className="flex items-center gap-2">
+                                <div className={`size-2.5 rounded-full ${item.isActive ? 'bg-success' : 'bg-danger'}`} />
+                                <span className="text-[10px] font-black uppercase tracking-widest">{item.isActive ? 'ACTIVE' : 'DISABLED'}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div className="flex items-center justify-center gap-2 opacity-40 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => { setSelectedItem(item); setEditData(item); setIsEditMode(false); }} className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-all"><Eye size={16} /></button>
+                                <button onClick={() => { setSelectedItem(item); setEditData(item); setIsEditMode(true); }} className="size-9 rounded-xl bg-white/5 text-white flex items-center justify-center hover:bg-white/10 transition-all"><Edit3 size={16} /></button>
+                                <button onClick={() => handleDelete(item.id, 'user')} className="size-9 rounded-xl bg-danger/10 text-danger flex items-center justify-center hover:bg-danger hover:text-white transition-all"><Trash2 size={16} /></button>
+                            </div>
+                        </td>
+                    </tr>
+                );
+            case 'classes':
+                return (
+                    <tr key={item.id} className="group hover:bg-white/[0.015]">
+                        <td>
+                            <div className="flex items-center gap-4 py-2">
+                                <div className="size-11 rounded-2xl bg-surface-2 border border-white/5 overflow-hidden flex items-center justify-center text-primary">
+                                    {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-cover" /> : <BookOpen size={20} />}
+                                </div>
+                                <div>
+                                    <p className="font-black text-base tracking-tight">{item.name}</p>
+                                    <p className="text-[9px] font-black text-text-muted opacity-40 uppercase tracking-widest">Type: {item.type}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <p className="text-sm font-bold text-white italic tracking-tighter">{item.users?.fullName || item.users?.username || 'SYSTEM'}</p>
+                        </td>
+                        <td className="font-black text-primary text-sm italic">LKR {Number(item.price).toLocaleString()}</td>
+                        <td>
+                            <div className="flex items-center gap-2">
+                                <div className={`size-2.5 rounded-full ${item.isActive ? 'bg-success' : 'bg-danger'}`} />
+                                <span className="text-[10px] font-black uppercase tracking-widest">{item.isActive ? 'OPERATIONAL' : 'OFFLINE'}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div className="flex items-center justify-center gap-2 opacity-40 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => { setSelectedItem(item); setEditData(item); setIsEditMode(false); }} className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-all"><Eye size={16} /></button>
+                                <button onClick={() => { setSelectedItem(item); setEditData(item); setIsEditMode(true); }} className="size-9 rounded-xl bg-white/5 text-white flex items-center justify-center hover:bg-white/10 transition-all"><Edit3 size={16} /></button>
+                                <button onClick={() => handleDelete(item.id, 'course')} className="size-9 rounded-xl bg-danger/10 text-danger flex items-center justify-center hover:bg-danger hover:text-white transition-all"><Trash2 size={16} /></button>
+                            </div>
+                        </td>
+                    </tr>
+                );
+            case 'purchases':
+                return (
+                    <tr key={item.id}>
+                        <td className="font-mono text-[10px] opacity-40">#{item.id.slice(0, 12).toUpperCase()}</td>
+                        <td>
+                            <div className="flex items-center gap-3">
+                                <p className="text-xs font-black text-white italic">{item.users?.fullName || item.users?.username}</p>
+                            </div>
+                        </td>
+                        <td className="text-xs font-bold text-text-muted italic">{item.modules?.name}</td>
+                        <td className="text-[10px] font-black uppercase text-text-muted opacity-40">{new Date(item.paidAt).toLocaleString()}</td>
+                        <td className="font-black text-success text-sm italic">LKR {Number(item.amount).toLocaleString()}</td>
+                    </tr>
+                );
+            default: return null;
+        }
+    };
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] opacity-20 italic font-black uppercase tracking-[0.5em] text-xs">
-            System Idle: Module Not Initialized
+        <div className="space-y-10">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8 px-2">
+                <div>
+                    <h1 className="text-4xl font-black tracking-tighter uppercase italic">{activeTab} Hub</h1>
+                    <p className="text-text-muted text-[10px] font-black uppercase tracking-[0.3em] opacity-40 mt-1">Institutional Management Access Port</p>
+                </div>
+                <div className="flex items-center gap-4 w-full md:w-auto">
+                    <div className="relative group flex-1 md:min-w-[400px]">
+                        <Search size={18} className="absolute left-6 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-all scale-75 group-focus-within:scale-100" />
+                        <Input 
+                            placeholder="GENERATE SEARCH PARAMETERS..." 
+                            value={search} 
+                            onChange={e => setSearch(e.target.value)} 
+                            className="h-16 pl-16 rounded-[2rem] bg-white/[0.03] border-white/10 italic font-bold focus:bg-white/[0.05]" 
+                        />
+                    </div>
+                    <button onClick={fetchData} className="size-16 rounded-[2rem] protocol-card flex items-center justify-center shrink-0 hover:text-primary transition-all"><RefreshCw size={22} className={loading ? 'animate-spin' : ''} /></button>
+                </div>
+            </div>
+
+            <div className="data-table-container">
+                <table className="data-table">
+                    <thead>{renderTableHeaders()}</thead>
+                    <tbody>
+                        {loading ? (
+                            <tr><td colSpan={10} className="py-24 text-center"><div className="size-14 border-[3px] border-primary border-t-transparent rounded-full animate-spin shadow-[0_0_20px_rgba(243,24,76,0.3)] mx-auto" /></td></tr>
+                        ) : filteredData.length === 0 ? (
+                            <tr><td colSpan={10} className="text-center py-24 font-black opacity-20 uppercase tracking-[0.4em] text-xs italic">Registry Empty</td></tr>
+                        ) : filteredData.map(renderRow)}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* ── Detail / Edit Modal ── */}
+            <AnimatePresence>
+                {selectedItem && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+                        <motion.div 
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/80 backdrop-blur-xl"
+                            onClick={() => setSelectedItem(null)}
+                        />
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }} 
+                            animate={{ opacity: 1, scale: 1, y: 0 }} 
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden protocol-card !p-0 flex flex-col"
+                        >
+                            <div className="p-8 border-b border-white/10 flex items-center justify-between shrink-0 bg-white/[0.01]">
+                                <div className="flex items-center gap-4">
+                                    <div className="size-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                                        <Hash size={24} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-2xl font-black italic tracking-tighter uppercase">{isEditMode ? 'Modify Attribute' : 'Registry Profile'}</h2>
+                                        <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.3em] opacity-40 italic">ID Vector: {selectedItem.id}</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setSelectedItem(null)} className="size-12 rounded-2xl bg-white/5 flex items-center justify-center text-text-muted hover:bg-danger/10 hover:text-danger transition-all"><X size={24} /></button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {isEditMode ? (
+                                        // ── Edit Form Inputs ──
+                                        Object.keys(selectedItem).map(key => {
+                                            if (['id', 'createdAt', 'updatedAt', 'modules', 'enrollments', 'live_classes', 'users', 'password'].includes(key)) return null;
+                                            if (typeof selectedItem[key] === 'object' && selectedItem[key] !== null) return null;
+                                            
+                                            if (key === 'isActive') {
+                                                return (
+                                                    <div key={key} className="space-y-2">
+                                                        <label className="text-[10px] font-black text-primary uppercase tracking-widest pl-2 opacity-80 backdrop-blur-sm">System Status</label>
+                                                        <select 
+                                                            value={editData[key] ? 'true' : 'false'} 
+                                                            onChange={e => setEditData({...editData, [key]: e.target.value === 'true'})}
+                                                            className="w-full h-14 bg-white/5 border border-white/20 rounded-xl px-5 font-bold text-sm text-white italic outline-none focus:border-primary/60 transition-colors shadow-2xl"
+                                                        >
+                                                            <option value="true" className="bg-[#1a0507]">ACTIVE NODE</option>
+                                                            <option value="false" className="bg-[#1a0507]">SUSPENDED NODE</option>
+                                                        </select>
+                                                    </div>
+                                                );
+                                            }
+
+                                            if (key === 'approvalStatus') {
+                                                return (
+                                                    <div key={key} className="space-y-2">
+                                                        <label className="text-[10px] font-black text-primary uppercase tracking-widest pl-2 opacity-80">Security Protocol</label>
+                                                        <select 
+                                                            value={editData[key]} 
+                                                            onChange={e => setEditData({...editData, [key]: e.target.value})}
+                                                            className="w-full h-14 bg-white/5 border border-white/20 rounded-xl px-5 font-bold text-sm text-white italic outline-none focus:border-primary/60 transition-colors shadow-2xl"
+                                                        >
+                                                            <option value="PENDING" className="bg-[#1a0507]">PENDING VERIFICATION</option>
+                                                            <option value="APPROVED" className="bg-[#1a0507]">AUTHORIZED NODE</option>
+                                                            <option value="SUSPENDED" className="bg-[#1a0507]">TERMINATED ACCESS</option>
+                                                        </select>
+                                                    </div>
+                                                );
+                                            }
+
+                                            if (key === 'type' && activeTab === 'classes') {
+                                                return (
+                                                    <div key={key} className="space-y-2">
+                                                        <label className="text-[10px] font-black text-primary uppercase tracking-widest pl-2 opacity-80">Class Protocol</label>
+                                                        <select 
+                                                            value={editData[key]} 
+                                                            onChange={e => setEditData({...editData, [key]: e.target.value})}
+                                                            className="w-full h-14 bg-white/5 border border-white/20 rounded-xl px-5 font-bold text-sm text-white italic outline-none focus:border-primary/60 transition-colors shadow-2xl"
+                                                        >
+                                                            <option value="LIVE" className="bg-[#1a0507]">LIVE BROADCAST</option>
+                                                            <option value="RECORDED" className="bg-[#1a0507]">ARCHIVAL ACCESS</option>
+                                                        </select>
+                                                    </div>
+                                                );
+                                            }
+                                            
+                                            return (
+                                                <div key={key} className="space-y-2">
+                                                    <label className="text-[10px] font-black text-primary/80 uppercase tracking-widest pl-2 opacity-90">{key.replace(/([A-Z])/g, ' $1')}</label>
+                                                    <Input 
+                                                        value={editData[key] || ''} 
+                                                        onChange={e => setEditData({...editData, [key]: e.target.value})} 
+                                                        className="h-14 bg-white/5 border-white/20 rounded-xl font-bold text-white italic focus:bg-white/10"
+                                                    />
+                                                </div>
+                                            );
+                                        })
+                                    ) : (
+                                        // ── View Details Display ──
+                                        <>
+                                            <DetailRow label="Full Name" value={selectedItem.fullName || selectedItem.name} icon={UserCheck} />
+                                            <DetailRow label="Primary Vector" value={selectedItem.email || 'N/A'} icon={Mail} />
+                                            <DetailRow label="Phone Link" value={selectedItem.mobileNumber || 'N/A'} icon={Phone} />
+                                            {activeTab === 'teachers' && (
+                                                <>
+                                                    <DetailRow label="NIC Identifier" value={selectedItem.nicNumber} />
+                                                    <DetailRow label="Institutional Source" value={selectedItem.instituteName} />
+                                                    <DetailRow label="Qualification Array" value={selectedItem.educationQualifications} />
+                                                </>
+                                            )}
+                                            {activeTab === 'students' && (
+                                                <>
+                                                    <DetailRow label="School Node" value={selectedItem.school} />
+                                                    <DetailRow label="Grade Vector" value={selectedItem.gradeYear} />
+                                                </>
+                                            )}
+                                            {activeTab === 'classes' && (
+                                                <>
+                                                    <DetailRow label="Facilitator" value={selectedItem.users?.fullName} />
+                                                    <DetailRow label="Price Point" value={selectedItem.price} icon={DollarSign} />
+                                                    <DetailRow label="Protocol Type" value={selectedItem.type} />
+                                                </>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* Deep Relationships (Classes, Students, Modules) */}
+                                {!isEditMode && (
+                                    <div className="mt-10 space-y-6">
+                                        <h3 className="text-sm font-black text-primary uppercase tracking-[0.3em] flex items-center gap-3">
+                                            <div className="size-1.5 bg-primary rounded-full" />
+                                            Cross-Link Registry
+                                        </h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {selectedItem.modules && selectedItem.modules.map((m: any) => (
+                                                <div key={m.id} className="p-5 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between group">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary italic font-black">{m.name.charAt(0)}</div>
+                                                        <div>
+                                                            <p className="text-xs font-black text-white italic">{m.name}</p>
+                                                            <p className="text-[9px] font-black text-text-muted uppercase tracking-widest opacity-40">Price: LKR {Number(m.price).toLocaleString()}</p>
+                                                        </div>
+                                                    </div>
+                                                    <ChevronRight size={14} className="text-text-muted opacity-0 group-hover:opacity-100 transition-all" />
+                                                </div>
+                                            ))}
+                                            {selectedItem.enrollments && selectedItem.enrollments.map((e: any) => (
+                                                <div key={e.id} className="p-5 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between group">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="size-10 rounded-xl bg-success/10 flex items-center justify-center text-success italic font-black uppercase tracking-tighter">ENR</div>
+                                                        <div>
+                                                            <p className="text-xs font-black text-white italic">{e.modules?.name || e.users?.fullName || 'Registry Node'}</p>
+                                                            <p className="text-[9px] font-black text-text-muted uppercase tracking-widest opacity-40">{e.status} • {new Date(e.createdAt).toLocaleDateString()}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {selectedItem.live_classes && selectedItem.live_classes.map((lc: any) => (
+                                                <div key={lc.id} className="p-5 rounded-2xl bg-white/5 border border-white/5 flex items-center gap-4">
+                                                    <Video size={16} className="text-primary opacity-40" />
+                                                    <div>
+                                                        <p className="text-xs font-black text-white italic">{lc.title}</p>
+                                                        <p className="text-[9px] font-black text-text-muted uppercase tracking-widest opacity-40">{new Date(lc.scheduledAt).toLocaleString()}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="p-8 bg-black/40 border-t border-white/10 flex items-center justify-end gap-3 shrink-0">
+                                {isEditMode ? (
+                                    <>
+                                        <Button variant="ghost" onClick={() => setIsEditMode(false)} className="h-14 px-8 rounded-[1.25rem] text-text-muted font-black uppercase tracking-widest text-[10px]">Cancel Changes</Button>
+                                        <Button onClick={handleSaveEdit} className="protocol-button !h-14 !px-12 flex items-center gap-3">
+                                            <Save size={18} />
+                                            Commit Protocol Update
+                                        </Button>
+                                    </>
+                                ) : (
+                                    <>
+                                        {activeTab === 'teachers' && selectedItem.approvalStatus === 'PENDING' && (
+                                            <Button onClick={async () => {
+                                                await axios.put(`/api/admin/teachers/${selectedItem.id}/approve`, {}, authHeaders);
+                                                fetchData();
+                                                setSelectedItem(null);
+                                            }} className="bg-success text-white h-14 px-10 rounded-[1.25rem] font-black uppercase tracking-widest text-[10px] hover:bg-success/80 shadow-lg shadow-success/20">Authorize Node</Button>
+                                        )}
+                                        <Button onClick={() => setIsEditMode(true)} className="protocol-button !h-14 !px-12 flex items-center gap-3 shadow-lg shadow-primary/20">
+                                            <Edit3 size={18} />
+                                            Modify Hierarchy
+                                        </Button>
+                                    </>
+                                )}
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
+

@@ -42,12 +42,31 @@ The EDU-LMS platform follows a robust **three-tier architecture** optimized for 
 
 ## 🔐 Security & Identity Protocol
 
-Security is the backbone of the EDU-LMS platform:
-- **Stateless Authentication**: Uses **JSON Web Tokens (JWT)** with 256-bit encryption for session persistence.
-- **Secret Management**: Passwords are never stored in plain text; they are hashed using **Bcrypt.js** with unique salts.
-- **SQL Injection Defense**: Prisma ORM eliminates SQL injection risks through automatic parameterization of all queries.
-- **Role-Based Access (RBAC)**: Strict separation of powers between **Admin**, **Teacher**, and **Student** identities.
-- **Cross-Origin Isolation**: Configured with strict COEP/COOP headers to support shared-array buffers required by modern SDKs.
+The EDU-LMS platform implements a robust, enterprise-grade authentication ecosystem designed for maximum security and operational clarity.
+
+### 🔄 End-to-End Authentication Lifecycle
+
+#### 1. Identity Provisioning (Signup)
+- **Multi-Role Onboarding**: Users register as either a **Student** or a **Teacher**.
+- **Cryptographic Security**: Passwords undergo high-entropy hashing using **bcryptjs** (salt factor 10) before storage.
+- **Role-Based Gatekeeping**:
+  - **Students**: Automatically verified upon signup for immediate access.
+  - **Teachers**: Initial state is set to `PENDING`. Access is restricted to an "Awaiting Approval" interface until a System Administrator manually validates the facilitator's credentials via the Admin Control Center.
+
+#### 2. Identity Verification (Login)
+- **Dual-Factor Validation**: Users authenticate using either their email or unique username.
+- **Concurrent Login Prevention**: To prevent unauthorized account sharing and enhance data integrity, the system **invalidates all previous sessions** for a user upon a new successful login. 
+- **Session Issuance**: A secure **JSON Web Token (JWT)** is generated, containing the user's `userId`, `role`, and a unique `sessionId`.
+
+#### 3. Session Persistence & Safety
+- **Stateless Authorization**: The JWT is stored in the browser's `localStorage` and transmitted in the `Authorization: Bearer <token>` header for all API interactions.
+- **Server-Side Session Tracking**: Every request undergoes a two-step validation:
+  1. **JWT Verification**: Ensures the token is signed and the 24-hour expiration hasn't passed.
+  2. **Active Session Check**: The system queries the database to ensure the `sessionId` is current. If a user logs in on a new device, the old token will trigger an immediate, safe eviction (LOGOUT) on the original device.
+
+#### 4. Defensive Engineering
+- **SQL Injection Defense**: All database interactions via Prisma ORM are automatically parameterized.
+- **Cross-Origin Security**: Strict COEP (Cross-Origin Embedder Policy) and COOP (Cross-Origin Opener Policy) headers protect data when utilizing the embedded Zoom SDK.
 
 ---
 
