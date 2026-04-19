@@ -6,7 +6,8 @@ import {
   Calendar, Star, GraduationCap, ArrowRight, Zap,
   CheckCircle2, Package, Globe, ShieldCheck, Verified,
   PlayCircle, HelpCircle, ArrowLeft, ArrowUpRight,
-  Sparkles, DollarSign, Users, Award, Eye
+  Sparkles, DollarSign, Users, Award, Eye, Play, Trophy, X,
+  FileText, DownloadCloud, FolderOpen
 } from 'lucide-react';
 import { Button } from './ui/interfaces-button';
 import { Input } from './ui/input';
@@ -75,20 +76,134 @@ const StatMini: React.FC<{ label: string; value: string; icon: any }> = ({ label
   </div>
 );
 
+function VideoPlayerModal({ video, onClose }: { video: any, onClose: () => void }) {
+  const getEmbedUrl = (url: string) => {
+    if (!url) return '';
+    try {
+      let cleanUrl = url.trim();
+      // If user pasted the whole iframe, extract the src using a robust regex
+      if (cleanUrl.toLowerCase().includes('<iframe')) {
+        const srcMatch = cleanUrl.match(/src\s*=\s*["']([^"']+)["']/i);
+        if (srcMatch) cleanUrl = srcMatch[1];
+      }
+
+      let id = '';
+      // Comprehensive YouTube ID extraction regex
+      const regExp = /^.*(?:youtu\.be\/|v\/|e\/|u\/\w+\/|embed\/|v=)([^#\&\?]*).*/;
+      const match = cleanUrl.match(regExp);
+      
+      if (match && match[1].length === 11) {
+        id = match[1];
+      } else {
+        // Fallback: Parse URL and handle parameters or direct IDs
+        try {
+          const urlObj = new URL(cleanUrl.startsWith('http') ? cleanUrl : `https://${cleanUrl}`);
+          id = urlObj.searchParams.get('v') || cleanUrl.split('/').pop()?.split('?')[0] || '';
+        } catch {
+          id = cleanUrl.split('/').pop()?.split('?')[0] || '';
+        }
+      }
+      
+      if (!id || id.length !== 11) {
+         console.warn("[VIDEO_PARSER] Could not extract 11-char ID from:", cleanUrl);
+         return cleanUrl; // Return as-is if it's already an embed URL
+      }
+
+      // Use youtube-nocookie.com and add robust permissions
+      return `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1&autoplay=1&enablejsapi=1`;
+    } catch (e) {
+      console.error("[VIDEO_PARSER] Fatal parsing error:", e);
+      return url;
+    }
+  };
+
+  const videoUrl = video.youtubeUrl || video.url || '';
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 md:p-10 bg-black/95 backdrop-blur-3xl overflow-y-auto">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-6xl w-full flex flex-col gap-8 my-auto text-white">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-5 text-left">
+            <div className="size-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-[0_0_20px_rgba(243,24,76,0.3)]">
+              <Play size={20} className="fill-primary" />
+            </div>
+            <div>
+              <h3 className="text-2xl font-black italic tracking-tighter uppercase leading-none">Transmission Node</h3>
+              <p className="text-[10px] font-black text-white/40 uppercase tracking-widest leading-none mt-2">Verified Institutional Stream</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="size-12 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-white/10 transition-all"><X size={20} /></button>
+        </div>
+
+        <div className="aspect-video w-full glass rounded-[3rem] overflow-hidden border-white/10 shadow-3xl relative group bg-black">
+          <iframe 
+            src={getEmbedUrl(videoUrl)} 
+            className="w-full h-full" 
+            {...({ credentialless: "true" } as any)}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+            referrerPolicy="strict-origin-when-cross-origin"
+            allowFullScreen
+          ></iframe>
+        </div>
+
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6 px-4">
+          <div className="flex items-center gap-4">
+            <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+              <Verified size={18} />
+            </div>
+            <div className="text-left">
+              <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">Asset Subject</p>
+              <p className="text-sm font-black uppercase tracking-tight">{video.title}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-full md:w-auto px-10 h-14 rounded-2xl bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-[0_10px_30px_rgba(243,24,76,0.3)] hover:scale-105 transition-all">Terminate Stream</button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 export default function StudentDashboard({ user, dashboardData, startZoomMeeting, activeTab, setActiveTab, token }: StudentDashboardProps) {
   const [courses, setCourses] = useState<any[]>([]);
   const [availableModules, setAvailableModules] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
-  const [classTab, setClassTab] = useState<'vectors' | 'hub' | 'assets'>('vectors');
+  const [classTab, setClassTab] = useState<'vectors' | 'hub' | 'recordings' | 'materials'>('vectors');
   const [search, setSearch] = useState('');
   const [enrolling, setEnrolling] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState<any>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState<any>(null);
+  const [materials, setMaterials] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (selectedCourse && classTab === 'materials') {
+      axios.get(`/api/courses/${selectedCourse.id}/materials`, authHeaders)
+        .then(res => setMaterials(res.data))
+        .catch(err => console.error("Failed to fetch materials", err));
+    }
+  }, [selectedCourse, classTab]);
+
+  const handleMaterialDownload = async (id: string) => {
+    try {
+      const res = await axios.get(`/api/materials/${id}/download`, authHeaders);
+      window.open(res.data.url, '_blank');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to get download link. Please try again.');
+    }
+  };
 
   const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
   const displayName = user?.fullName || user?.username;
   const now = new Date();
+
+  // Reset context switches on global navigation events
+  useEffect(() => {
+    if (activeTab !== 'classes' && activeTab !== 'dashboard') {
+      setSelectedCourse(null);
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -143,11 +258,7 @@ export default function StudentDashboard({ user, dashboardData, startZoomMeeting
                   <GraduationCap size={32} className="text-white" />
                 </div>
                 <div className="space-y-1">
-                  <div className="bg-white/5 border border-white/10 rounded-full px-4 py-1.5 flex items-center gap-2 w-fit">
-                    <span className="size-2 bg-success rounded-full animate-pulse shadow-[0_0_10px_#10b981]" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.25em] text-white/80">Identity Verified: Online</span>
-                  </div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted opacity-40 ml-1">Verified Scholar Node</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted opacity-40 ml-1 mt-2">Verified Scholar Node</p>
                 </div>
               </div>
 
@@ -253,36 +364,49 @@ export default function StudentDashboard({ user, dashboardData, startZoomMeeting
     if (selectedCourse) {
       const meetings = (selectedCourse.live_classes || []).sort((a: any, b: any) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
       return (
-        <motion.div initial={{ opacity: 0, scale: 0.99 }} animate={{ opacity: 1, scale: 1 }} className="space-y-10">
-          <div className="glass border border-white/10 rounded-[3rem] p-4 md:p-12 mb-10 relative overflow-hidden bg-[#0f0405]/20">
-            <div className="absolute right-0 top-0 h-full w-2 shadow-[0_0_30px_rgba(243,24,76,0.3)] z-20" style={{ background: selectedCourse.color || '#f3184c' }} />
-            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-10 mb-12 pb-12 border-b border-white/5 relative z-10">
-              <div className="flex items-center gap-6">
-                <button onClick={() => setSelectedCourse(null)} className="size-14 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-primary transition-all group shrink-0"><ArrowLeft size={24} className="group-hover:-translate-x-1 transition-transform" /></button>
-                <div className="min-w-0"><div className="flex items-center gap-3 mb-2"><div className="size-2 rounded-full shadow-[0_0_8px_#f3184c]" style={{ background: selectedCourse.color || '#f3184c' }} /><p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted opacity-40">Class ID: {selectedCourse.id.slice(0, 12)}</p></div><h2 className="text-3xl md:text-5xl font-black tracking-tighter uppercase italic truncate">{selectedCourse.name}</h2></div>
-              </div>
-              <div className="institutional-radio-inputs shadow-2xl shadow-black/40">
-                {['vectors', 'hub'].map(tab => (
-                  <label key={tab} className="institutional-radio">
-                    <input
-                      type="radio"
-                      name="classTab"
-                      checked={classTab === tab}
-                      onChange={() => setClassTab(tab as any)}
-                      className="institutional-radio-input"
-                    />
-                    <span className="institutional-radio-name italic tracking-widest">{tab === 'vectors' ? 'Live Classes' : 'Class Info'}</span>
-                  </label>
-                ))}
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-12">
+          {selectedVideo && <VideoPlayerModal video={selectedVideo} onClose={() => setSelectedVideo(null)} />}
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-10 sticky top-0 bg-background/50 backdrop-blur-xl z-[40] py-6 px-2 -mx-2 border-b border-white/5">
+            <div className="flex items-center gap-6">
+              <button onClick={() => setSelectedCourse(null)} className="size-14 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-primary transition-all group shrink-0"><ArrowLeft size={24} className="group-hover:-translate-x-1 transition-transform" /></button>
+              <div className="min-w-0">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="size-2 rounded-full shadow-[0_0_8px_#f3184c]" style={{ background: selectedCourse.color || '#f3184c' }} />
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted opacity-40">Class ID: {selectedCourse.id.slice(0, 12)}</p>
+                </div>
+                <h2 className="text-3xl md:text-5xl font-black tracking-tighter uppercase italic truncate">{selectedCourse.name}</h2>
               </div>
             </div>
-            <AnimatePresence mode="wait">
+            
+            <div className="premium-tabs">
+              {[
+                { id: 'vectors', label: 'MEETINGS', icon: Video },
+                { id: 'recordings', label: 'RECORDINGS', icon: Play },
+                { id: 'materials', label: 'MATERIALS', icon: FolderOpen },
+                { id: 'hub', label: 'DESCRIPTION', icon: Search }
+              ].map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setClassTab(t.id as any)}
+                  className={classTab === t.id ? 'active' : ''}
+                >
+                  <t.icon size={14} className="tab-icon" />
+                  <span>{t.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="glass border border-white/10 rounded-[3rem] p-4 md:p-12 mb-10 relative overflow-hidden bg-[#0f0405]/20 min-h-[600px]">
+             <div className="absolute right-0 top-0 h-full w-2 shadow-[0_0_30px_rgba(243,24,76,0.3)] z-20" style={{ background: selectedCourse.color || '#f3184c' }} />
+             
+             <AnimatePresence mode="wait">
               {classTab === 'vectors' && (
-                <motion.div key="vectors" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8 relative z-10">
+                <motion.div key="vectors" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8 relative z-10">
                   <div className="flex items-center justify-between"><div className="flex items-center gap-3 opacity-60"><Video size={18} className="text-primary" /><h3 className="font-black text-xs uppercase tracking-[0.3em]">Institutional Directives</h3></div><div className="flex items-center gap-3 group cursor-pointer" onClick={() => setShowHistory(!showHistory)}><span className="text-[10px] font-black text-text-muted uppercase tracking-widest opacity-40 group-hover:opacity-100 transition-opacity">Archive Log</span><div className={`w-12 h-6 rounded-full relative transition-colors border ${showHistory ? 'bg-primary/20 border-primary/40' : 'bg-white/5 border-white/10'}`}><motion.div animate={{ x: showHistory ? 26 : 4 }} className={`absolute top-1 size-4 rounded-full shadow-lg ${showHistory ? 'bg-primary shadow-primary/40' : 'bg-white/20'}`} /></div></div></div>
                   <div className="grid grid-cols-1 gap-4">
                     {meetings.filter(m => showHistory || new Date(m.scheduledAt).getTime() > twentyFourHoursAgo.getTime()).map((m: any) => {
-                      const isLive = now >= new Date(new Date(m.scheduledAt).getTime() - 15 * 60 * 1000) && now <= new Date(new Date(m.scheduledAt).getTime() + 24 * 60 * 60 * 1000); // Available for 24h post-start
+                      const isLive = now >= new Date(new Date(m.scheduledAt).getTime() - 15 * 60 * 1000) && now <= new Date(new Date(m.scheduledAt).getTime() + 24 * 60 * 60 * 1000);
                       const isPast = new Date(m.scheduledAt).getTime() < twentyFourHoursAgo.getTime();
                       return (
                         <div key={m.id} className={`glass p-8 rounded-[2.5rem] border-white/5 flex flex-col lg:flex-row lg:items-center justify-between gap-8 hover:border-primary/20 transition-all group ${isPast ? 'opacity-40 grayscale hover:grayscale-0 hover:opacity-100' : ''}`}>
@@ -320,8 +444,89 @@ export default function StudentDashboard({ user, dashboardData, startZoomMeeting
                   </div>
                 </motion.div>
               )}
+
+              {classTab === 'recordings' && (
+                <motion.div key="recordings" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-10 relative z-10 pt-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {selectedCourse.recordings?.map((rec: any) => (
+                      <div key={rec.id} className="glass rounded-[2rem] overflow-hidden border-white/5 group hover:border-primary/20 transition-all bg-[#0f0405]/20 flex flex-col h-full shadow-2xl">
+                        <div className="aspect-video relative overflow-hidden bg-black/40 cursor-pointer" onClick={() => setSelectedVideo(rec)}>
+                          <img 
+                            src={`https://img.youtube.com/vi/${(() => {
+                              const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+                              const match = (rec.youtubeUrl || "").match(regExp);
+                              return (match && match[2].length === 11) ? match[2] : '';
+                            })()}/maxresdefault.jpg`} 
+                            className="w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700"
+                            alt="Recording preview"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-primary/10 transition-all">
+                            <div className="size-16 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center group-hover:scale-125 group-hover:bg-primary group-hover:border-primary transition-all duration-500 shadow-2xl">
+                              <Play size={28} className="text-white fill-white ml-1" />
+                            </div>
+                          </div>
+                          <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end backdrop-blur-md bg-black/40 p-4 rounded-2xl border border-white/5">
+                            <div className="flex items-center gap-2 text-primary font-black text-[9px] uppercase tracking-widest italic">
+                              <Clock size={12} />
+                              {new Date(rec.topicDate).toLocaleDateString()}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="p-8 flex flex-col flex-1 gap-4">
+                          <h4 className="font-black text-lg uppercase italic tracking-tight text-white/90 group-hover:text-primary transition-colors line-clamp-1">{rec.title}</h4>
+                          <div className="flex items-center justify-between pt-4 border-t border-white/5 mt-auto">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-[8px] font-black text-text-muted uppercase tracking-widest opacity-40 italic">Resource Integrity</span>
+                              <span className="text-[10px] font-black text-success uppercase italic tracking-tighter">Verified Access Active</span>
+                            </div>
+                            <Button onClick={() => setSelectedVideo(rec)} variant="ghost" className="size-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-primary transition-all">
+                              <ArrowUpRight size={18} />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {(selectedCourse.recordings?.length || 0) === 0 && (
+                      <div className="col-span-full py-32 text-center glass rounded-[3rem] border-dashed border-white/10 w-full">
+                        <PlayCircle size={48} className="mx-auto mb-6 text-text-muted opacity-10" />
+                        <p className="text-[10px] font-black uppercase tracking-[0.6em] text-text-muted opacity-40 italic">Archive Vault Empty</p>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+
+              {classTab === 'materials' && (
+                <motion.div key="materials" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-10 relative z-10 pt-4">
+                   <div className="flex justify-between items-center px-4">
+                     <h2 className="text-2xl font-black italic tracking-tighter uppercase">Resource Materials</h2>
+                   </div>
+                   <div className="data-table-container rounded-[2.5rem] border border-white/5">
+                    <table className="data-table">
+                      <thead><tr><th>Material Vector</th><th>Size</th><th>Timestamp</th><th className="text-right">Actions</th></tr></thead>
+                      <tbody>
+                        {materials.length === 0 ? (
+                           <tr><td colSpan={4} className="text-center py-24 opacity-30 font-black uppercase text-xs italic">No materials found</td></tr>
+                        ) : materials.map((m: any) => (
+                           <tr key={m.id} className="group hover:bg-white/[0.02]">
+                              <td><div className="flex items-center gap-4 py-2"><div className="size-10 rounded-xl bg-surface-2 flex items-center justify-center border border-white/10 text-primary"><FileText size={18} /></div><span className="font-black text-sm">{m.name}</span></div></td>
+                              <td className="font-mono text-[10px] opacity-60 uppercase">{m.size ? (m.size / 1024 / 1024).toFixed(2) + ' MB' : 'Unknown'}</td>
+                              <td className="font-mono text-[10px] opacity-60 uppercase">{new Date(m.createdAt).toLocaleDateString()}</td>
+                              <td>
+                                <div className="flex items-center justify-end pr-4">
+                                  <button onClick={() => handleMaterialDownload(m.id)} className="size-12 rounded-2xl bg-white/5 flex items-center justify-center hover:bg-primary transition-all group/dl shadow-xl"><DownloadCloud size={18} className="fill-white/0 group-hover/dl:fill-white/20" /></button>
+                                </div>
+                              </td>
+                           </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                   </div>
+                </motion.div>
+              )}
+
               {classTab === 'hub' && (
-                <motion.div key="hub" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-12 relative z-10 pt-4"><div className="grid grid-cols-1 lg:grid-cols-3 gap-12"><div className="lg:col-span-2 space-y-8"><div className="space-y-4"><h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary italic">Intelligence Summary</h4><p className="text-xl font-medium leading-relaxed text-white/80 tracking-tight">{selectedCourse.description}</p></div><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div className="glass p-8 rounded-[2rem] border-white/5 flex flex-col gap-4"><Award size={24} className="text-primary" /><div><p className="text-[9px] font-black text-text-muted uppercase tracking-widest opacity-40 mb-1">Certification</p><p className="text-sm font-black uppercase tracking-tight">Institutional Merit</p></div></div><div className="glass p-8 rounded-[2rem] border-white/5 flex flex-col gap-4"><Users size={24} className="text-success" /><div><p className="text-[9px] font-black text-text-muted uppercase tracking-widest opacity-40 mb-1">Scholar Density</p><p className="text-sm font-black uppercase tracking-tight">Vectored Access Active</p></div></div></div></div><div className="space-y-8"><h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary italic">Primary Facilitator</h4><div className="glass p-10 rounded-[2.5rem] border-white/10 text-center relative overflow-hidden group"><div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent z-0 opacity-0 group-hover:opacity-100 transition-opacity" /><Avatar className="size-24 rounded-[2rem] border-4 border-background/50 ring-4 ring-primary/20 mx-auto mb-6 relative z-10 shadow-2xl"><AvatarImage src={selectedCourse.teachers?.profilePhotoUrl} /><AvatarFallback className="bg-primary/20 text-primary uppercase font-black text-2xl">{(selectedCourse.teachers?.fullName || 'T').charAt(0)}</AvatarFallback></Avatar><div className="relative z-10"><p className="font-black text-xl uppercase tracking-tighter mb-1 text-white">{selectedCourse.teachers?.fullName || selectedCourse.teachers?.username}</p><p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted opacity-40 mb-0">Master Instructor</p></div></div></div></div></motion.div>
+                <motion.div key="hub" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-12 relative z-10 pt-4"><div className="grid grid-cols-1 lg:grid-cols-3 gap-12"><div className="lg:col-span-2 space-y-8"><div className="space-y-4"><h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary italic">Intelligence Summary</h4><p className="text-xl font-medium leading-relaxed text-white/80 tracking-tight">{selectedCourse.description}</p></div><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div className="glass p-8 rounded-[2rem] border-white/5 flex flex-col gap-4"><Award size={24} className="text-primary" /><div><p className="text-[9px] font-black text-text-muted uppercase tracking-widest opacity-40 mb-1">Certification</p><p className="text-sm font-black uppercase tracking-tight">Institutional Merit</p></div></div><div className="glass p-8 rounded-[2rem] border-white/5 flex flex-col gap-4"><Users size={24} className="text-success" /><div><p className="text-[9px] font-black text-text-muted uppercase tracking-widest opacity-40 mb-1">Scholar Density</p><p className="text-sm font-black uppercase tracking-tight">Vectored Access Active</p></div></div></div></div><div className="space-y-8"><h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary italic">Primary Facilitator</h4><div className="glass p-10 rounded-[2.5rem] border-white/10 text-center relative overflow-hidden group"><div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent z-0 opacity-0 group-hover:opacity-100 transition-opacity" /><Avatar className="size-24 rounded-[2rem] border-4 border-background/50 ring-4 ring-primary/20 mx-auto mb-6 relative z-10 shadow-2xl"><AvatarImage src={selectedCourse.teachers?.profilePhotoUrl} /><AvatarFallback className="bg-primary/20 text-primary uppercase font-black text-2xl">{(selectedCourse.teachers?.fullName || 'T').charAt(0)}</AvatarFallback></Avatar><div className="relative z-10"><p className="font-black text-xl uppercase tracking-tighter mb-1 text-white">{selectedCourse.teachers?.fullName || selectedCourse.teachers?.username}</p><p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted opacity-40 mb-0">Master Instructor</p></div></div></div></div></motion.div>
               )}
             </AnimatePresence>
           </div>
