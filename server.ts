@@ -10,6 +10,8 @@ import dotenv from "dotenv";
 import { PrismaClient, users_role, teacher_approval_status } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import axios from "axios";
+import B2 from "backblaze-b2";
+import multer from "multer";
 // Google Drive integration removed as per user request
 
 dotenv.config();
@@ -25,6 +27,30 @@ prisma.$connect()
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// --- Backblaze B2 Setup ---
+const b2 = new B2({
+  applicationKeyId: process.env.B2_KEY_ID || '',
+  applicationKey: process.env.B2_APPLICATION_KEY || ''
+});
+
+// Authorize B2 automatically on start
+let b2Authorized = false;
+let b2DownloadUrl = "";
+b2.authorize().then((res) => {
+  b2Authorized = true;
+  b2DownloadUrl = res.data.downloadUrl;
+  console.log("[B2] Authorized successfully");
+}).catch(e => console.error("[B2] Authorization failed:", e));
+
+const upload = multer({ storage: multer.memoryStorage() });
+
+// --- Security Headers for Zoom & Iframe Compatibility ---
+app.use((req, res, next) => {
+  res.setHeader("Cross-Origin-Embedder-Policy", "credentialless");
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  next();
+});
 
 // --- Synchronization Logic ---
 
@@ -49,24 +75,39 @@ async function bootstrapUsers() {
       });
       const hashedPassword = await bcrypt.hash(user.password, 10);
 
+      const userToUse = existing || await prisma.users.create({
+        data: {
+          id: uuidv4(),
+          email: user.email,
+          username: user.username,
+          password: hashedPassword,
+          role: user.role,
+          approvalStatus: user.approvalStatus,
+          fullName: user.fullName,
+          isVerified: true,
+          updatedAt: new Date(),
+        } as any,
+      });
+
       if (!existing) {
-        console.log(`[BOOTSTRAP] User ${user.email} not found. Creating...`);
-        const newUser = await prisma.users.create({
+        console.log(`[BOOTSTRAP] Successfully created user: ${user.email}`);
+      } else {
+        console.log(`[BOOTSTRAP] User ${user.email} exists. Updating credentials...`);
+        await prisma.users.update({
+          where: { id: existing.id },
           data: {
-            id: uuidv4(),
-            email: user.email,
-            username: user.username,
             password: hashedPassword,
             role: user.role,
             approvalStatus: user.approvalStatus,
-            fullName: user.fullName,
-            isVerified: true,
-            updatedAt: new Date(),
-          } as any,
+            fullName: user.fullName
+          } as any
         });
-        console.log(`[BOOTSTRAP] Successfully created user: ${user.email}`);
+      }
 
-        if (user.username === "teacher1") {
+      if (user.username === "teacher1") {
+        const hasModule = await prisma.modules.findFirst({ where: { teacherId: userToUse.id } });
+        if (!hasModule) {
+          console.log(`[BOOTSTRAP] Synchronizing sample course for teacher1...`);
           const courseId = uuidv4();
           await prisma.modules.create({
             data: {
@@ -76,7 +117,7 @@ async function bootstrapUsers() {
               price: 50.0,
               color: "#f3184c",
               type: "COURSE",
-              teacherId: newUser.id,
+              teacherId: userToUse.id,
               startDate: new Date(),
               startTime: "10:00",
               endTime: "12:00",
@@ -96,18 +137,29 @@ async function bootstrapUsers() {
             } as any
           });
         }
-      } else {
-        console.log(`[BOOTSTRAP] User ${user.email} exists. Updating credentials...`);
-        await prisma.users.update({
-          where: { id: existing.id },
-          data: {
-            password: hashedPassword,
-            role: user.role,
-            approvalStatus: user.approvalStatus,
-            fullName: user.fullName
-          } as any
-        });
-        console.log(`[BOOTSTRAP] Successfully updated user: ${user.email}`);
+      }
+
+      if (user.username === "student1") {
+        const mathModule = await prisma.modules.findFirst({ where: { name: "A/L Combined Mathematics" } });
+        if (mathModule) {
+          const hasEnrollment = await prisma.enrollments.findFirst({
+            where: { userId: userToUse.id, moduleId: mathModule.id }
+          });
+          if (!hasEnrollment) {
+            console.log(`[BOOTSTRAP] Synchronizing sample enrollment for student1...`);
+            await prisma.enrollments.create({
+              data: {
+                id: uuidv4(),
+                userId: userToUse.id,
+                moduleId: mathModule.id,
+                status: "PAID",
+                amount: mathModule.price,
+                paidAt: new Date(),
+                updatedAt: new Date()
+              }
+            });
+          }
+        }
       }
     } catch (err: any) {
       if (err.code === 'P2002') {
@@ -159,6 +211,112 @@ app.get("/api/health", (req, res) => {
     environment: status,
     timestamp: new Date().toISOString()
   });
+});
+
+// --- Backblaze B2 Materials API ---
+
+app.get("/api/courses/:id/materials", async (req, res) => {
+  try {
+    const materials = await prisma.materials.findMany({
+      where: { moduleId: req.params.id },
+      orderBy: { createdAt: "desc" }
+    });
+    res.json(materials);
+  } catch (err) {
+    console.error("[B2] Fetch error:", err);
+    res.status(500).json({ error: "Failed to fetch materials" });
+  }
+});
+
+app.post("/api/courses/:id/materials", upload.single("file"), async (req, res) => {
+  if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+  if (!b2Authorized) return res.status(500).json({ message: "Storage not ready" });
+
+  try {
+    const moduleId = req.params.id;
+    const bucketName = process.env.B2_BUCKET_NAME!;
+    
+    // Get Bucket ID
+    const bucketRes = await b2.getBucket({ bucketName });
+    const bucketId = bucketRes.data.buckets[0].bucketId;
+
+    // Get Upload URL
+    const uploadUrlData = await b2.getUploadUrl({ bucketId });
+    
+    // Upload File
+    const originalName = req.file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const fileName = `classes/${moduleId}/materials/${Date.now()}-${originalName}`;
+    
+    const uploadRes = (await b2.uploadFile({
+      uploadUrl: uploadUrlData.data.uploadUrl,
+      uploadAuthToken: uploadUrlData.data.authorizationToken,
+      fileName,
+      data: req.file.buffer
+    })) as any;
+
+    // Save to Prisma
+    const material = await prisma.materials.create({
+      data: {
+        id: uuidv4(),
+        moduleId,
+        name: req.file.originalname,
+        fileUrl: fileName,
+        fileId: uploadRes.data.fileId,
+        size: req.file.size,
+        type: req.file.mimetype
+      }
+    });
+
+    res.json(material);
+  } catch (error) {
+    console.error("[B2] Upload error:", error);
+    res.status(500).json({ error: "Upload failed" });
+  }
+});
+
+app.get("/api/materials/:id/download", async (req, res) => {
+  if (!b2Authorized || !b2DownloadUrl) return res.status(500).json({ error: "Storage not ready" });
+  try {
+    const material = await prisma.materials.findUnique({ where: { id: req.params.id } });
+    if (!material) return res.status(404).json({ error: "File not found" });
+
+    const bucketName = process.env.B2_BUCKET_NAME!;
+    const bucketRes = await b2.getBucket({ bucketName });
+    const bucketId = bucketRes.data.buckets[0].bucketId;
+
+    const authRes = await b2.getDownloadAuthorization({
+      bucketId,
+      fileNamePrefix: material.fileUrl,
+      validDurationInSeconds: 86400
+    });
+
+    const downloadLink = `${b2DownloadUrl}/file/${bucketName}/${material.fileUrl}?Authorization=${authRes.data.authorizationToken}`;
+    res.json({ url: downloadLink });
+  } catch (error) {
+    console.error("[B2] Download auth error:", error);
+    res.status(500).json({ error: "Failed to authorize download" });
+  }
+});
+
+app.delete("/api/materials/:id", async (req, res) => {
+  if (!b2Authorized) return res.status(500).json({ error: "Storage not ready" });
+  try {
+    const material = await prisma.materials.findUnique({ where: { id: req.params.id } });
+    if (!material) return res.status(404).json({ error: "File not found" });
+
+    if (material.fileId) {
+      await b2.deleteFileVersion({
+        fileId: material.fileId,
+        fileName: material.fileUrl
+      });
+    }
+
+    await prisma.materials.delete({ where: { id: material.id } });
+    res.json({ success: true });
+  } catch (error) {
+    console.error("[B2] Delete error:", error);
+    res.status(500).json({ error: "Failed to delete material" });
+  }
 });
 
 // Auth: Signup (Extended for Teacher/Student roles)
@@ -1012,12 +1170,13 @@ app.get("/api/student/my-courses", verifySession, async (req: any, res) => {
         modules: {
           include: {
             users: { select: { id: true, fullName: true, username: true } as any },
-            live_classes: { orderBy: { scheduledAt: 'asc' } }
-          }
+            live_classes: { orderBy: { scheduledAt: 'asc' } },
+            recordings: { orderBy: { topicDate: 'desc' } }
+          } as any
         }
       }
     });
-    res.json(enrollments.map(e => e.modules));
+    res.json(enrollments.map((e: any) => e.modules));
   } catch (err) { res.status(500).json({ message: "Error fetching courses" }); }
 });
 
@@ -1098,17 +1257,23 @@ app.get("/api/teacher/students", verifySession, async (req: any, res) => {
 // Teacher: Get their courses with full meeting and enrollment details
 app.get("/api/teacher/courses", verifySession, async (req: any, res) => {
   if (req.user.role !== users_role.TEACHER) return res.status(403).json({ message: "Forbidden" });
+  console.log(`[TEACHER API] Fetching courses for Identity: ${req.user.userId} (Role: ${req.user.role})`);
   try {
     const courses = await prisma.modules.findMany({
       where: { teacherId: req.user.userId },
       include: {
         enrollments: { select: { id: true, status: true, amount: true, userId: true } },
-        live_classes: { orderBy: { scheduledAt: 'asc' } }
-      },
+        live_classes: { orderBy: { scheduledAt: 'asc' } },
+        recordings: { orderBy: { topicDate: 'desc' } }
+      } as any,
       orderBy: { createdAt: 'desc' }
     });
+    console.log(`[TEACHER API] Courses successfully vectored: ${courses.length}`);
     res.json(courses);
-  } catch (err) { res.status(500).json({ message: "Error fetching courses" }); }
+  } catch (err) {
+    console.error("[TEACHER API] Registry retrieval failed:", err);
+    res.status(500).json({ message: "Error fetching courses" });
+  }
 });
 
 
@@ -1131,6 +1296,52 @@ app.put("/api/auth/profile", verifySession, async (req: any, res) => {
     const { password: _, ...safeUser } = updated;
     res.json(safeUser);
   } catch (err) { res.status(500).json({ message: "Error updating profile" }); }
+});
+
+// Teacher: Add Recording to Module
+app.post("/api/teacher/recordings", verifySession, async (req: any, res) => {
+  if (req.user.role !== users_role.TEACHER) return res.status(403).json({ message: "Forbidden" });
+  const { moduleId, title, youtubeUrl, topicDate } = req.body;
+  try {
+    const recording = await prisma.recordings.create({
+      data: {
+        id: uuidv4(),
+        moduleId,
+        title,
+        youtubeUrl,
+        topicDate: topicDate ? new Date(topicDate) : new Date(),
+        updatedAt: new Date()
+      } as any
+    });
+    res.status(201).json(recording);
+  } catch (err) { res.status(500).json({ message: "Error saving recording registry" }); }
+});
+
+// Teacher: Update Recording
+app.put("/api/teacher/recordings/:id", verifySession, async (req: any, res) => {
+  if (req.user.role !== users_role.TEACHER) return res.status(403).json({ message: "Forbidden" });
+  const { title, youtubeUrl, topicDate } = req.body;
+  try {
+    const updated = await prisma.recordings.update({
+      where: { id: req.params.id },
+      data: {
+        title: title || undefined,
+        youtubeUrl: youtubeUrl || undefined,
+        topicDate: topicDate ? new Date(topicDate) : undefined,
+        updatedAt: new Date()
+      }
+    });
+    res.json(updated);
+  } catch (err) { res.status(500).json({ message: "Error updating recording registry" }); }
+});
+
+// Teacher: Delete Recording
+app.delete("/api/teacher/recordings/:id", verifySession, async (req: any, res) => {
+  if (req.user.role !== users_role.TEACHER) return res.status(403).json({ message: "Forbidden" });
+  try {
+    await prisma.recordings.delete({ where: { id: req.params.id } });
+    res.json({ message: "Recording deleted from registry" });
+  } catch (err) { res.status(500).json({ message: "Error deleting recording asset" }); }
 });
 
 // --- Vite Integration ---

@@ -157,7 +157,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <motion.aside
               initial={{ x: -260 }} animate={{ x: 0 }} exit={{ x: -260 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className={`fixed inset-y-0 left-0 w-64 border-r border-border z-40 md:hidden flex flex-col py-6 ${(user?.role === 'TEACHER' || user?.role === 'STUDENT') ? 'institutional-sidebar-gradient' : 'bg-sidebar'}`}
+              className="fixed inset-y-0 left-0 w-64 border-r border-border z-50 md:hidden flex flex-col py-6 bg-background"
             >
               <div className="flex items-center justify-between px-4 mb-8">
                 <div className="flex items-center gap-2.5">

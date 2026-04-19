@@ -1073,3 +1073,146 @@
       transparent);
   filter: blur(2px);
 }
+
+/* ── Premium Sliding Tabs Utility ── */
+.premium-tabs {
+  position: relative;
+  display: flex;
+  gap: 8px;
+  background: rgba(26, 26, 28, 0.7);
+  backdrop-filter: blur(24px);
+  padding: 6px;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.premium-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.premium-tabs button {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 28px;
+  border-radius: 1.2rem;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: rgba(142, 142, 147, 0.6);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  min-width: 140px;
+}
+
+@media (max-width: 768px) {
+  .premium-tabs {
+    padding: 4px;
+    gap: 4px;
+    border-radius: 1.2rem;
+  }
+  .premium-tabs button {
+    padding: 10px 16px;
+    min-width: 0;
+    gap: 6px;
+    font-size: 9px;
+  }
+}
+
+.premium-tabs button:hover {
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.premium-tabs button.active {
+  color: #ffffff !important;
+  background: #f3184c !important;
+  box-shadow: 0 8px 25px rgba(243, 24, 76, 0.3) !important;
+}
+
+.premium-tabs button .tab-icon {
+  transition: transform 0.4s ease;
+  position: relative;
+  z-index: 10;
+}
+
+.premium-tabs button.active .tab-icon {
+  transform: scale(1.1);
+}
+
+.premium-tabs button span {
+  position: relative;
+  z-index: 10;
+}
+/* -- From Uiverse.io by Creatlydev -- */
+.uiverse-button {
+  line-height: 1;
+  text-decoration: none;
+  display: inline-flex;
+  border: none;
+  cursor: pointer;
+  align-items: center;
+  gap: 0.75rem;
+  background-color: var(--clr, #f3184c);
+  color: #fff;
+  border-radius: 10rem;
+  font-weight: 900;
+  padding: 0.8rem 1.8rem;
+  padding-left: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 11px;
+}
+
+.button__icon-wrapper {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  position: relative;
+  color: var(--clr, #f3184c);
+  background-color: #fff;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  transition: background-color 0.3s;
+}
+
+.uiverse-button:hover {
+  background-color: #000;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+}
+
+.uiverse-button:hover .button__icon-wrapper {
+  color: #000;
+}
+
+.button__icon-svg--copy {
+  position: absolute;
+  transform: translate(-150%, 150%);
+}
+
+.uiverse-button:hover .button__icon-svg:first-child {
+  transition: transform 0.3s ease-in-out;
+  transform: translate(150%, -150%);
+}
+
+.uiverse-button:hover .button__icon-svg--copy {
+  transition: transform 0.3s ease-in-out 0.1s;
+  transform: translate(0);
+}

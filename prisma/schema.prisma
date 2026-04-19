@@ -62,9 +62,26 @@ model modules {
   googleDriveFolderUrl  String?
   enrollments           enrollments[]
   live_classes          live_classes[]
+  recordings            recordings[]
+  materials             materials[]
   users                 users?         @relation(fields: [teacherId], references: [id])
 
   @@index([teacherId], map: "modules_teacherId_fkey")
+}
+
+model materials {
+  id        String   @id @default(uuid())
+  moduleId  String
+  name      String
+  fileUrl   String   @db.Text
+  fileId    String?
+  size      Int?
+  type      String?
+  createdAt DateTime @default(now())
+  
+  modules   modules  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@index([moduleId])
 }
 
 model otps {
@@ -80,17 +97,21 @@ model otps {
 }
 
 model recordings {
-  id               String       @id
-  liveClassId      String
+  id               String        @id
+  moduleId         String
+  liveClassId      String?
   title            String
   duration         Int?
   youtubeUrl       String?
-  createdAt        DateTime     @default(now())
+  topicDate        DateTime?
+  createdAt        DateTime      @default(now())
   updatedAt        DateTime
-  zoomRecordingUrl String?      @db.Text
-  live_classes     live_classes @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
+  zoomRecordingUrl String?       @db.Text
+  modules          modules       @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  live_classes     live_classes? @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
 
-  @@index([liveClassId], map: "recordings_liveClassId_fkey")
+  @@index([moduleId])
+  @@index([liveClassId])
 }
 
 model sessions {

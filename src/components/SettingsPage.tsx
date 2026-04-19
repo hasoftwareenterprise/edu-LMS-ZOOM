@@ -71,10 +71,7 @@ export default function SettingsPage({ user }: SettingsPageProps) {
             </div>
 
             <div className="flex-1 space-y-4 text-center md:text-left">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20">
-                <span className="size-2 bg-primary rounded-full animate-pulse" />
-                <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">{user?.role} ACCESS ENABLED</span>
-              </div>
+              {/* Role badge removed per request */}
               <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white italic">{displayName}</h1>
               <p className="text-text-muted text-sm font-medium opacity-60 flex items-center justify-center md:justify-start gap-2">
                 <Shield size={14} className="text-primary" />
@@ -117,12 +114,11 @@ export default function SettingsPage({ user }: SettingsPageProps) {
                 <div className="space-y-2">
                   <label className="protocol-label">Asset Repository URL</label>
                   <div className="protocol-input-group">
-                    <Globe className="absolute left-5 top-1/2 -translate-y-1/2 size-4 text-white/20" />
                     <input 
                       type="url" 
                       value={profilePhotoUrl} 
                       onChange={e => setProfilePhotoUrl(e.target.value)} 
-                      className="protocol-input pl-12" 
+                      className="protocol-input" 
                       placeholder="HTTPS://..."
                     />
                   </div>
@@ -131,12 +127,11 @@ export default function SettingsPage({ user }: SettingsPageProps) {
                 <div className="space-y-2">
                   <label className="protocol-label">Communication Line</label>
                   <div className="protocol-input-group">
-                    <Smartphone className="absolute left-5 top-1/2 -translate-y-1/2 size-4 text-white/20" />
                     <input 
                       type="tel" 
                       value={mobileNumber} 
                       onChange={e => setMobileNumber(e.target.value)} 
-                      className="protocol-input pl-12" 
+                      className="protocol-input" 
                       placeholder="+94 ..."
                     />
                   </div>
@@ -145,12 +140,11 @@ export default function SettingsPage({ user }: SettingsPageProps) {
                 <div className="space-y-2">
                   <label className="protocol-label">WhatsApp Stream</label>
                   <div className="protocol-input-group">
-                    <MessageSquare className="absolute left-5 top-1/2 -translate-y-1/2 size-4 text-white/20" />
                     <input 
                       type="tel" 
                       value={whatsappNumber} 
                       onChange={e => setWhatsappNumber(e.target.value)} 
-                      className="protocol-input pl-12" 
+                      className="protocol-input" 
                       placeholder="+94 ..."
                     />
                   </div>
