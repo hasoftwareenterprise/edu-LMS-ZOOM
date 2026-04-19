@@ -599,7 +599,7 @@ export default function TeacherDashboard({ user, dashboardData, startZoomMeeting
             <div className="premium-tabs">
               {[
                 { id: 'meetings', icon: Calendar, label: 'MEETINGS' },
-                { id: 'recordings', icon: Video, label: 'ARCHIVES' },
+                { id: 'recordings', icon: Video, label: 'RECORDINGS' },
                 { id: 'students', icon: Users, label: 'REGISTRY' },
                 { id: 'materials', icon: FolderOpen, label: 'MATERIALS' },
                 { id: 'description', icon: BookOpen, label: 'DESCRIPTION' }
@@ -617,7 +617,7 @@ export default function TeacherDashboard({ user, dashboardData, startZoomMeeting
                      <h2 className="text-xl sm:text-2xl font-black italic tracking-tighter uppercase">Scheduled Meetings</h2>
                      <div className="flex flex-wrap items-center gap-4">
                        <div className="flex items-center gap-2 group cursor-pointer" onClick={() => setShowPastMeetings(!showPastMeetings)}>
-                         <span className="text-[9px] sm:text-[10px] font-black text-text-muted uppercase tracking-widest opacity-40 group-hover:opacity-100 transition-opacity">Archive Log</span>
+                         <span className="text-[9px] sm:text-[10px] font-black text-text-muted uppercase tracking-widest opacity-40 group-hover:opacity-100 transition-opacity">Past Meetings</span>
                          <div className={`w-10 h-5 sm:w-12 sm:h-6 rounded-full relative transition-colors border ${showPastMeetings ? 'bg-primary/20 border-primary/40' : 'bg-white/5 border-white/10'}`}>
                            <motion.div animate={{ x: showPastMeetings ? (window.innerWidth < 640 ? 20 : 26) : 4 }} className={`absolute top-1 size-3 sm:size-4 rounded-full shadow-lg ${showPastMeetings ? 'bg-primary shadow-primary/40' : 'bg-white/20'}`} />
                          </div>
@@ -675,17 +675,22 @@ export default function TeacherDashboard({ user, dashboardData, startZoomMeeting
               {classTab === 'recordings' && (
                 <motion.div key="recordings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 px-4">
-                    <h2 className="text-xl sm:text-2xl font-black italic tracking-tighter uppercase">ARCHIVES</h2>
-                    <Button onClick={() => { setEditingRecording(null); setShowRecordingForm(true); }} className="rounded-2xl h-12 px-6 uppercase tracking-widest text-[10px] font-black shrink-0 w-fit">UPLOAD RECORDING</Button>
+                    <h2 className="text-xl sm:text-2xl font-black italic tracking-tighter uppercase">RECORDINGS</h2>
+                    <button onClick={() => { setEditingRecording(null); setShowRecordingForm(true); }} className="animated-upload-btn shrink-0">
+                      <svg stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" strokeLinejoin="round" strokeLinecap="round"></path>
+                      </svg>
+                      <span className="text">UPLOAD</span>
+                    </button>
                   </div>
-                  <div className="data-table-container rounded-[2.5rem] border border-white/5">
+                  <div className="data-table-container rounded-[2.5rem] border border-white/5 overflow-x-auto w-full">
                     <table className="data-table">
                       <thead>
-                        <tr><th>Archive Index</th><th>Storage Node</th><th>Timestamp</th><th className="text-right">Registry Operations</th></tr>
+                        <tr><th>Recording Index</th><th>Storage Node</th><th>Timestamp</th><th className="text-right">Registry Operations</th></tr>
                       </thead>
                       <tbody>
                         {(course.recordings || []).length === 0 ? (
-                           <tr><td colSpan={4} className="text-center py-24 opacity-30 font-black uppercase tracking-widest text-xs italic">Archive Registry Empty</td></tr>
+                           <tr><td colSpan={4} className="text-center py-24 opacity-30 font-black uppercase tracking-widest text-xs italic">Recording Registry Empty</td></tr>
                         ) : (course.recordings || []).map((v: any) => (
                            <tr key={v.id} className="group hover:bg-white/[0.02]">
                              <td className="font-black uppercase italic tracking-tighter text-base py-6 text-white">{v.title}</td>
@@ -708,7 +713,7 @@ export default function TeacherDashboard({ user, dashboardData, startZoomMeeting
 
               {classTab === 'students' && (
                 <motion.div key="students" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
-                   <div className="data-table-container rounded-[2.5rem] border border-white/5">
+                   <div className="data-table-container rounded-[2.5rem] border border-white/5 overflow-x-auto w-full">
                     <table className="data-table">
                       <thead><tr><th>Learner</th><th>Identity Vector</th><th>Status</th></tr></thead>
                       <tbody>
@@ -732,13 +737,17 @@ export default function TeacherDashboard({ user, dashboardData, startZoomMeeting
                      <h2 className="text-2xl font-black italic tracking-tighter uppercase">Resource Materials</h2>
                      <div>
                        <input type="file" id="material-upload" className="hidden" onChange={handleMaterialUpload} />
-                       <Button onClick={() => document.getElementById('material-upload')?.click()} disabled={uploadingMaterial} className="rounded-2xl h-12 px-8 uppercase tracking-widest text-[10px] font-black">
-                         {uploadingMaterial ? <RefreshCw className="animate-spin size-4 mr-2" /> : <UploadCloud className="size-4 mr-2" />}
-                         {uploadingMaterial ? 'UPLOADING...' : 'UPLOAD MATERIAL'}
-                       </Button>
+                       <button onClick={() => document.getElementById('material-upload')?.click()} disabled={uploadingMaterial} className="animated-upload-btn">
+                          {uploadingMaterial ? <RefreshCw className="animate-spin" style={{width: "1.5em"}} /> : (
+                            <svg stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" strokeLinejoin="round" strokeLinecap="round"></path>
+                            </svg>
+                          )}
+                         <span className="text">{uploadingMaterial ? 'UPLOADING' : 'UPLOAD'}</span>
+                       </button>
                      </div>
                    </div>
-                   <div className="data-table-container rounded-[2.5rem] border border-white/5">
+                   <div className="data-table-container rounded-[2.5rem] border border-white/5 overflow-x-auto w-full">
                     <table className="data-table">
                       <thead><tr><th>Material Vector</th><th>Size</th><th>Timestamp</th><th className="text-right">Actions</th></tr></thead>
                       <tbody>

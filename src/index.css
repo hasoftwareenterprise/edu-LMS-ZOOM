@@ -1120,6 +1120,13 @@
     padding: 4px;
     gap: 4px;
     border-radius: 1.2rem;
+    max-width: 100%;
+    overflow-x: auto;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .premium-tabs::-webkit-scrollbar {
+    display: none;
   }
   .premium-tabs button {
     padding: 10px 16px;
@@ -1215,4 +1222,51 @@
 .uiverse-button:hover .button__icon-svg--copy {
   transition: transform 0.3s ease-in-out 0.1s;
   transform: translate(0);
+}
+
+.animated-upload-btn {
+  width: 10em;
+  height: 3em;
+  border-radius: 8px;
+  border: 0.15em solid #f3184c;
+  color: #f3184c;
+  background-color: transparent;
+  transition: all 0.5s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.animated-upload-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.animated-upload-btn .text {
+  display: none;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 10px;
+}
+
+.animated-upload-btn:hover > .text {
+  display: block;
+}
+
+.animated-upload-btn:hover > svg {
+  display: none;
+}
+
+.animated-upload-btn:hover:not(:disabled) {
+  background-color: #f3184c;
+  color: #fff;
+}
+
+.animated-upload-btn svg {
+  width: 1.5em;
+  margin-bottom: 2px;
 }
